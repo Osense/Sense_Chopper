@@ -564,6 +564,60 @@ body[data-mobile-step='1'] #viewport { height: clamp(320px, calc(100svh - 440px)
 .coach.folded .coach-anim, .coach.folded .coach-tip, .coach.folded .coach-extra, .coach.folded .coach-actions { display: none; }
 .coach.folded .coach-body { margin: 0; }
 .coach.folded .coach-q { margin: 4px 0 0; font-size: 14px; }
+
+/* 마법사 부품: 선택 카드 · 고르기 버튼 줄 · 크기 슬라이더 · 미리보기 */
+.coach-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.coach-options.exports { grid-template-columns: 1fr; }
+.coach-options.slides { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.coach-opt { display: grid; grid-template-rows: auto auto auto; justify-items: start; align-content: start; gap: 2px; min-height: 0; padding: 10px; text-align: left; background: var(--panel); border: 1.5px solid var(--border); border-radius: 12px; font-weight: 500; }
+.coach-opt:hover:not(:disabled) { background: var(--panel); border-color: var(--accent); }
+.coach-opt.on { border-color: var(--accent); background: var(--accent-bg); }
+.coach-opt b { font-size: 13.5px; font-weight: 800; }
+.coach-opt small { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+.coach-opt .shape { display: block; height: 30px; max-width: 54px; margin-bottom: 6px; border: 2px solid var(--frame); border-radius: 4px; background: color-mix(in oklch, var(--frame) 12%, transparent); }
+.coach-opt .shape.dashed { width: 54px; border-style: dashed; aspect-ratio: auto !important; background: repeating-linear-gradient(90deg, transparent 0 17px, color-mix(in oklch, var(--frame) 45%, transparent) 17px 18px); }
+.coach-options.exports .coach-opt { grid-template-columns: 46px 1fr; grid-template-rows: auto auto; column-gap: 12px; align-items: center; padding: 12px; }
+.coach-options.exports .coach-opt .ex { grid-row: span 2; }
+.coach-options.exports .coach-opt b { font-size: 14.5px; }
+.ex { position: relative; display: block; width: 46px; height: 40px; }
+.ex em { position: absolute; width: 22px; height: 22px; border-radius: 5px; border: 2px solid var(--frame); background: var(--panel); }
+.ex-img em:nth-child(1) { left: 0; top: 0; } .ex-img em:nth-child(2) { left: 12px; top: 9px; } .ex-img em:nth-child(3) { left: 24px; top: 18px; background: var(--accent-bg); }
+.ex-gif em { top: 9px; } .ex-gif em:nth-child(1) { left: 0; opacity: .35; } .ex-gif em:nth-child(2) { left: 12px; opacity: .65; } .ex-gif em:nth-child(3) { left: 24px; background: var(--accent-bg); }
+.ex-gif::after { content: ''; position: absolute; left: 4px; right: 4px; bottom: 0; height: 2px; border-radius: 2px; background: var(--brand-grad); }
+.ex-ppt { border: 2px solid var(--frame); border-radius: 5px; height: 30px; margin-top: 5px; background: var(--panel); }
+.ex-ppt em { left: 13px; top: 4px; width: 16px; height: 18px; border-radius: 3px; border: 0; background: var(--brand-grad); }
+.slide { display: grid; width: 100%; aspect-ratio: 16 / 9; gap: 2px; padding: 3px; margin-bottom: 6px; border: 1.5px solid var(--border-strong); border-radius: 5px; background: var(--panel); }
+.slide em { border-radius: 2px; background: color-mix(in oklch, var(--frame) 35%, transparent); }
+.slide.s4 { grid-template-columns: 1fr 1fr; } .slide.s6 { grid-template-columns: 1fr 1fr 1fr; }
+.coach-options.slides .coach-opt { padding: 8px; }
+.coach-options.slides .coach-opt b { font-size: 12.5px; }
+.coach-seg { display: grid; gap: 6px; }
+.coach-seg > span, .coach-name > span, .coach-range > span { font-size: 12px; font-weight: 700; color: var(--muted); }
+.coach-seg-row { display: flex; gap: 4px; padding: 3px; background: var(--raised); border: 1px solid var(--border); border-radius: 11px; }
+.coach-seg-row button { flex: 1; min-width: 0; min-height: 32px; padding: 4px 6px; border: 0; background: transparent; font-size: 12.5px; font-weight: 600; color: var(--muted); border-radius: 8px; }
+.coach-seg-row button[aria-checked='true'] { background: var(--panel); color: var(--text); box-shadow: var(--shadow-card); }
+.coach-range { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 10px; margin: 0; }
+.coach-range input { grid-column: 1 / -1; margin: 0; }
+.coach-range output { justify-self: end; font-size: 12.5px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.coach-quick { display: flex; gap: 6px; }
+.coach-quick button { flex: 1; min-height: 32px; font-size: 12.5px; }
+.coach-readout { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.coach-status:empty { display: none; }
+.coach-status { font-size: 12.5px; font-weight: 600; color: var(--accent); }
+.coach-preview:empty { display: none; }
+.coach-preview { display: grid; place-items: center; padding: 10px; border-radius: 12px; background: repeating-conic-gradient(var(--check) 0% 25%, #fff 0% 50%) 0/12px 12px; border: 1px solid var(--border); }
+.coach-preview img { display: block; max-width: 100%; max-height: 220px; border-radius: 6px; }
+.coach-name { display: grid; gap: 6px; }
+.coach-name small { margin-top: 0; }
+
+/* 쉬운 보기: 안내 카드가 펼쳐져 있으면 세부 설정 패널은 버튼으로만 열기 */
+.detail-toggle { width: calc(100% - 28px); margin: 10px 14px 4px; min-height: 34px; background: transparent; border-style: dashed; color: var(--muted); font-weight: 600; }
+body.coach-folded .detail-toggle { display: none; }
+body.simple:not(.coach-folded) aside .section,
+body.simple:not(.coach-folded) .mobile-guide-tools,
+body.simple:not(.coach-folded) .exportbar { display: none !important; }
+body:not(.coach-folded) .mobile-step-heading p { display: none; }
+
 /* 안내 카드가 칸 수를 묻는 동안에는 같은 입력칸을 패널에서 숨겨 헷갈리지 않게 */
 body[data-coach='s2a']:not(.coach-folded) .mobile-grid-row { display: none; }
 body.coach-correct .correction-panel { border-radius: 12px; animation: coachPulse 1.6s ease-in-out 3; }

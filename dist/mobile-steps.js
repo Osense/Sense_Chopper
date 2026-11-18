@@ -42,14 +42,14 @@
   const titles = [
     "불러오기 · 기울기 보정",
     "가로 · 세로선 맞추기",
-    "자를 영역 다듬기",
-    "저장하기",
+    "자를 영역 정하기",
+    "내보내기",
   ];
   const hints = [
     "이미지를 불러오고, 비뚤어졌다면 기울기를 바로잡아 주세요.",
     "칸 수를 넣어 격자를 만들고, 파란 선을 각 그림의 가운데로 끌어 맞춰 주세요.",
     "가운데 점으로 가로·세로선을 함께 옮기고, 테두리 손잡이로 크기를 조절하세요.",
-    "파일 이름 · 형식 · 크기를 정하고 한 번에 저장하세요.",
+    "낱장 이미지 · GIF · 발표 자료(PPT) 중 원하는 형태로 내보내세요.",
   ];
   const heading = document.createElement("div");
   heading.className = "mobile-step-heading";
@@ -70,7 +70,7 @@
   heading.append(stepActions);
   document.querySelector(".layout").before(heading);
   const tabs = $("stepNav");
-  ["불러오기", "선 정렬", "영역", "저장"].forEach((title, i) => {
+  ["불러오기", "선 정렬", "영역", "내보내기"].forEach((title, i) => {
     const button = document.createElement("button");
     button.type = "button";
     button.innerHTML = `<span>${i + 1}</span>${title}`;

@@ -1,8 +1,12 @@
-// 작업 안내 카드: 단계마다 "이제 무엇을 하면 되는지"를 질문으로 묻고, 대답 버튼으로 다음 할 일을 이어 줍니다.
-// 카드 왼쪽(또는 위)에는 그 단계 장면만 반복하는 작은 애니메이션이 함께 나옵니다.
-// 넓은 화면은 옆 패널 맨 위, 휴대폰은 캔버스 위에 놓이고, 접어 둘 수 있습니다(접은 상태는 기억).
+// 단계별 안내(마법사): 단계마다 한 가지를 질문으로 묻고, 대답 버튼을 누르면 실제 설정이 바뀌고 다음 질문으로 넘어갑니다.
+//   1 불러오기 · 보정   반듯한가요? → (기울었으면) 기준선 긋기
+//   2 선 맞추기         가로 · 세로 몇 개인가요? → 선이 가운데를 지나나요?
+//   3 영역 정하기       자를 영역은 어떤 모습인가요? → 영역 크기를 맞춰 주세요
+//   4 내보내기          총 N장이 나왔어요. 이걸 어떻게 할까요? → 낱장 저장 · GIF · PPT
+// 그 단계 장면만 반복하는 작은 애니메이션이 함께 나옵니다. 세부 설정 패널은 기본으로 숨기고 버튼으로 엽니다.
 (() => {
   const FOLD_KEY = "sense-chopper:coach-folded";
+  const DETAIL_KEY = "sense-chopper:details-open";
   const coach = document.createElement("section");
   coach.className = "coach";
   coach.setAttribute("aria-label", "단계별 안내");
@@ -24,15 +28,22 @@
   const foldBtn = coach.querySelector(".coach-fold");
   Howto.mount(anim);
 
-  const STEP_NAMES = ["불러오기 · 보정", "선 맞추기", "영역 다듬기", "저장"];
+  const STEP_NAMES = ["불러오기 · 보정", "선 맞추기", "영역 정하기", "내보내기"];
   const goNext = () => $("mobileNext").click();
   const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
+  const h = (tag, cls, html) => {
+    const el = document.createElement(tag);
+    if (cls) el.className = cls;
+    if (html != null) el.innerHTML = html;
+    return el;
+  };
+  const hasGuides = () =>
+    (typeof boxes !== "undefined" && boxes.length > 0) || (typeof vertical !== "undefined" && vertical.length > 0);
 
+  // ---------- 작은 입력 부품 ----------
   function stepper(id, label) {
     const input = $(id);
-    const wrap = document.createElement("div");
-    wrap.className = "coach-stepper";
-    wrap.innerHTML = `<span>${label}</span><div><button type="button" aria-label="${label} 줄이기">−</button><output></output><button type="button" aria-label="${label} 늘리기">+</button></div>`;
+    const wrap = h("div", "coach-stepper", `<span>${label}</span><div><button type="button" aria-label="${label} 줄이기">−</button><output></output><button type="button" aria-label="${label} 늘리기">+</button></div>`);
     const out = wrap.querySelector("output");
     const [minus, plus] = wrap.querySelectorAll("button");
     const sync = () => (out.textContent = input.value + "개");
@@ -47,134 +58,357 @@
     sync();
     return wrap;
   }
-
+  // 여러 개 중 하나 고르기 (작은 버튼 줄)
+  function segmented(label, options, value, onChange) {
+    const wrap = h("div", "coach-seg");
+    wrap.append(h("span", "", label));
+    const row = h("div", "coach-seg-row");
+    row.setAttribute("role", "radiogroup");
+    row.setAttribute("aria-label", label);
+    for (const [v, text] of options) {
+      const b = h("button", "", text);
+      b.type = "button";
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", String(v === value));
+      b.onclick = () => {
+        row.querySelectorAll("button").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+        onChange(v);
+      };
+      row.append(b);
+    }
+    wrap.append(row);
+    return wrap;
+  }
+  // 큰 선택 카드 (그림 + 제목 + 설명)
+  function optionCards(items, cls = "") {
+    const grid = h("div", "coach-options " + cls);
+    for (const it of items) {
+      const b = h("button", "coach-opt" + (it.on ? " on" : ""), `${it.visual || ""}<b>${it.title}</b><small>${it.desc}</small>`);
+      b.type = "button";
+      b.onclick = it.pick;
+      grid.append(b);
+    }
+    return grid;
+  }
   function button(text, onClick, primary) {
-    const b = document.createElement("button");
+    const b = h("button", primary ? "primary" : "", text);
     b.type = "button";
-    b.textContent = text;
-    if (primary) b.className = "primary";
     b.onclick = onClick;
     return b;
   }
+  const status = () => h("p", "coach-status");
 
-  // 상태마다: [단계, 질문, 도움말, 추가 요소 만들기, 버튼들]
+  // ---------- 3단계: 영역 모양 · 크기 ----------
+  const SHAPES = [
+    { r: "auto", title: "칸에 꼭 맞게", desc: "선 사이를 빈틈없이 · 추천", box: [1, 1], dashed: true },
+    { r: "1", title: "정사각형 1:1", desc: "이모티콘 · 프로필 · 인스타", box: [1, 1] },
+    { r: "0.75", title: "세로 3:4", desc: "카드 · 증명사진 · 인물", box: [3, 4] },
+    { r: "1.333333", title: "가로 4:3", desc: "사진 · 그림 · 작품", box: [4, 3] },
+    { r: "1.777778", title: "와이드 16:9", desc: "발표 화면 · 유튜브", box: [16, 9] },
+    { r: "0.5625", title: "세로 9:16", desc: "쇼츠 · 스토리 · 릴스", box: [9, 16] },
+  ];
+  let shape = "auto";
+  function cellLimits() {
+    if (!img) return { w: 300, h: 300 };
+    if (typeof cropMode !== "undefined" && cropMode === "guide" && vertical.length && horizontal.length) {
+      const vs = guideCells(vertical, img.width), hs = guideCells(horizontal, img.height);
+      return { w: Math.min(...vs.map((c) => c.length)), h: Math.min(...hs.map((c) => c.length)) };
+    }
+    return { w: img.width, h: img.height };
+  }
+  function maxWidthFor(r) {
+    const c = cellLimits();
+    return Math.max(10, Math.floor(Math.min(c.w, c.h * r)));
+  }
+  let sizePct = 92;
+  function applySize(pct) {
+    sizePct = pct;
+    const r = Number(shape);
+    const w = Math.max(10, Math.round((maxWidthFor(r) * pct) / 100));
+    const hgt = Math.max(10, Math.round(w / r));
+    for (const [id, v] of [["gw", w], ["gh", hgt]]) {
+      if (v > Number($(id).max)) $(id).max = v;
+      $(id).value = v;
+    }
+    $("cw").value = w;
+    $("ch").value = hgt;
+    if (cropMode === "guide") syncDimensions("w");
+    else if (boxes.length) $("size").click();
+  }
+  function applyShape(r) {
+    snapshot();
+    shape = r;
+    if (r === "auto") {
+      $("guideAutoSize").checked = true;
+      fire($("guideAutoSize"), "change");
+    } else {
+      $("ratio").value = r;
+      applySize(92);
+    }
+    previews();
+  }
+  const sizeText = () => {
+    const b = boxes[Math.max(0, selected)];
+    return b ? `${Math.round(b.w)} × ${Math.round(b.h)} px` : "";
+  };
+
+  // ---------- 4단계: 내보내기 ----------
+  let gifOpts = { delay: 300, width: 360, order: "forward" };
+  let pptOpts = { perSlide: 1, title: "", numbers: true };
+  let lastGif = null;
+  function nameField() {
+    const box = h("label", "coach-name", `<span>파일 이름</span><input type="text" maxlength="80"><small></small>`);
+    const input = box.querySelector("input");
+    const hintEl = box.querySelector("small");
+    input.value = $("prefix").value;
+    const syncHint = () => (hintEl.textContent = $("filename").textContent);
+    input.oninput = () => {
+      $("prefix").value = input.value;
+      fire($("prefix"), "input");
+      fire($("prefix"), "change");
+      requestAnimationFrame(syncHint);
+    };
+    syncHint();
+    return box;
+  }
+  async function run(statusEl, work) {
+    const all = actions.querySelectorAll("button");
+    all.forEach((b) => (b.disabled = true));
+    try {
+      await work((text) => (statusEl.textContent = text));
+    } catch (e) {
+      console.error(e);
+      statusEl.textContent = "만들지 못했어요. 크기를 줄이거나 다시 시도해 주세요.";
+    } finally {
+      all.forEach((b) => (b.disabled = false));
+    }
+  }
+
+  // ---------- 질문들 ----------
+  // 각 상태: { step, q, tip, extra(), actions: [[글자, 동작, 강조]] }
   const STATES = {
-    s1: () => [1, "불러온 학습지가 반듯한가요?",
-      "조금 기울어져 있어도 괜찮아요. 기준선 하나만 그어 주면 반듯하게 펴 드려요.", null,
-      [["반듯해요, 다음으로", goNext, true], ["기울어졌어요", () => show("s1b")]]],
-    s1b: () => [1, "기울어진 선을 따라 한 번 그어 주세요",
-      "제목 밑줄이나 표 테두리처럼 원래 수평이어야 할 선을 캔버스에서 끌어 그은 뒤 ‘보정 시작’을 누르세요. 기울기 숫자를 직접 바꿔도 돼요.", null,
-      [["보정 끝, 다음으로", goNext, true], ["처음 질문으로", () => show("s1")]]],
-    s2a: () => [2, "그림이 가로로 몇 개, 세로로 몇 줄 있나요?",
-      "세어 보고 숫자만 넣으면 그 수만큼 선을 고르게 그려 드려요.",
-      () => [stepper("cols", "가로"), stepper("rows", "세로")],
-      [["선 만들기", () => { $("grid").click(); }, true]]],
-    s2b: () => [2, "파란 선이 그림 가운데를 지나나요?",
-      "어긋난 선은 X1 · Y1 같은 이름표를 잡고 끌어 그림 가운데로 옮겨 주세요. 조금 어긋나도 다음 단계에서 다듬을 수 있어요.", null,
-      [["네, 다음으로", goNext, true], ["칸 수 다시 정하기", () => show("s2a")]]],
-    s3: () => [3, "자를 영역이 그림을 잘 감싸고 있나요?",
-      "넘치거나 잘린 칸은 모서리 손잡이로 크기를, 가운데 점으로 위치를 고쳐 주세요. 잘린 모습은 다음 단계에서 미리 볼 수 있어요.", null,
-      [["네, 저장하러 가기", goNext, true]]],
-    s4: () => [4, "파일 이름을 뭐라고 붙일까요?",
-      "형식과 크기는 그대로 두어도 괜찮아요. 번호는 정한 시작 번호부터 차례로 붙어요.",
-      () => {
-        const box = document.createElement("label");
-        box.className = "coach-name";
-        box.innerHTML = `<input type="text" maxlength="80" aria-label="파일 제목"><small></small>`;
-        const input = box.querySelector("input");
-        const hintEl = box.querySelector("small");
-        input.value = $("prefix").value;
-        const syncHint = () => (hintEl.textContent = $("filename").textContent);
-        input.oninput = () => {
-          $("prefix").value = input.value;
-          fire($("prefix"), "input");
-          fire($("prefix"), "change");
-          requestAnimationFrame(syncHint);
-        };
-        syncHint();
-        return [box];
-      },
-      [["ZIP으로 한 번에 저장", () => { $("zip").click(); show("s4done"); }, true], ["하나씩 저장", () => { $("individual").click(); show("s4done"); }]]],
-    s4done: () => [4, "다 됐어요! 저장한 파일을 확인해 보세요",
-      "다른 학습지도 잘라 볼까요? 새 이미지를 불러오면 처음 단계부터 다시 안내해 드려요.", null,
-      [["새 이미지 불러오기", () => $("file").click(), true], ["다시 저장하기", () => show("s4")]]],
+    s1: () => ({ step: 1, q: "불러온 이미지가 반듯한가요?",
+      tip: "조금 기울어져 있어도 괜찮아요. 기준선 하나만 그어 주면 반듯하게 펴 드려요.",
+      actions: [["반듯해요, 다음으로", goNext, true], ["기울어졌어요", () => show("s1b")]] }),
+    s1b: () => ({ step: 1, q: "기울어진 선을 따라 한 번 그어 주세요",
+      tip: "제목 밑줄이나 표 테두리처럼 원래 수평이어야 할 선을 캔버스에서 끌어 그은 뒤 ‘보정 시작’을 누르세요.",
+      actions: [["보정 끝, 다음으로", goNext, true], ["처음 질문으로", () => show("s1")]] }),
+    s2a: () => ({ step: 2, q: "그림이 가로로 몇 개, 세로로 몇 줄 있나요?",
+      tip: "세어 보고 숫자만 넣으면 그 수만큼 선을 고르게 그려 드려요.",
+      extra: () => [stepper("cols", "가로"), stepper("rows", "세로")],
+      actions: [["선 만들기", () => { $("grid").click(); autoAlignGuides(); show("s2b", { auto: true }); }, true]] }),
+    s2b: ({ auto } = {}) => ({ step: 2, q: "파란 선이 그림 가운데를 지나나요?",
+      tip: (auto ? "그림을 찾아 선을 가운데로 맞춰 두었어요. " : "") + "어긋난 선은 X1 · Y1 같은 이름표를 잡고 끌어 그림 가운데로 옮겨 주세요.",
+      actions: [["네, 다음으로", goNext, true], ["자동으로 다시 맞추기", () => { autoAlignGuides(); show("s2b", { auto: true }); }], ["칸 수 다시 정하기", () => show("s2a")]] }),
+    s3a: () => ({ step: 3, q: "자를 영역은 어떤 모습인가요?",
+      tip: "어디에 쓸지 떠올려 보세요. 고르면 캔버스에 바로 보여요.",
+      extra: () => [optionCards(SHAPES.map((s) => ({
+        title: s.title, desc: s.desc, on: s.r === shape,
+        visual: `<i class="shape${s.dashed ? " dashed" : ""}" style="aspect-ratio:${s.box[0]}/${s.box[1]}"></i>`,
+        pick: () => { applyShape(s.r); show("s3b"); },
+      })), "shapes")],
+      actions: [] }),
+    s3b: () => {
+      const auto = shape === "auto";
+      return { step: 3, q: "영역의 크기를 맞춰 주세요!",
+        tip: auto
+          ? "칸마다 빈틈없이 나눴어요. 넘치거나 모자란 칸만 그 영역을 눌러 모서리 손잡이로 고쳐 주세요."
+          : "그림이 잘리지 않을 만큼 넉넉하게 키워 주세요. 하나만 다르면 그 영역을 눌러 모서리 손잡이로, 가운데 점으로 위치를 옮겨요.",
+        extra: () => {
+          if (auto) return [h("p", "coach-readout", `영역 ${boxes.length}개 · 칸 크기에 맞춤`)];
+          const wrap = h("label", "coach-range", `<span>영역 크기</span><input type="range" min="20" max="100" step="1"><output></output>`);
+          const range = wrap.querySelector("input"), out = wrap.querySelector("output");
+          range.value = String(sizePct);
+          out.textContent = sizeText();
+          range.onpointerdown = () => snapshot();
+          range.oninput = () => { applySize(Number(range.value)); out.textContent = sizeText(); };
+          range.onchange = () => previews();
+          const quick = h("div", "coach-quick");
+          for (const [pct, text] of [[70, "작게"], [85, "보통"], [100, "칸 가득"]])
+            quick.append(button(text, () => { snapshot(); range.value = String(pct); range.oninput(); previews(); }));
+          return [wrap, quick];
+        },
+        actions: [["다 맞췄어요, 다음으로", goNext, true], ["모양 다시 고르기", () => show("s3a")]] };
+    },
+    s4: () => ({ step: 4, q: `총 ${boxes.length}장의 이미지가 나왔어요. 이제 이걸 어떻게 할까요?`,
+      tip: "미리보기에서 잘린 모습을 확인할 수 있어요. 여러 가지로 만들어도 돼요.",
+      extra: () => [optionCards([
+        { title: "낱장 이미지로 저장", desc: "PNG · JPG를 ZIP 하나로", visual: '<i class="ex ex-img"><em></em><em></em><em></em></i>', pick: () => show("s4img") },
+        { title: "움직이는 GIF 만들기", desc: "차례로 넘어가는 애니메이션", visual: '<i class="ex ex-gif"><em></em><em></em><em></em></i>', pick: () => show("s4gif") },
+        { title: "발표 자료(PPT) 만들기", desc: "한 장에 하나씩 또는 모아서", visual: '<i class="ex ex-ppt"><em></em></i>', pick: () => show("s4ppt") },
+      ], "exports")],
+      actions: [] }),
+    s4img: () => {
+      const st = status();
+      return { step: 4, q: "파일 이름과 형식을 정해 주세요",
+        tip: "번호는 01부터 차례로 붙어요. 투명 배경이 필요하면 PNG를 고르세요.",
+        extra: () => [nameField(), segmented("형식", [["png", "PNG"], ["jpeg", "JPG"], ["webp", "WEBP"]], $("format").value, (v) => { $("format").value = v; fire($("format"), "change"); }), st],
+        actions: [
+          ["ZIP으로 한 번에 저장", () => { $("zip").click(); show("done", { what: "ZIP 파일" }); }, true],
+          ["하나씩 저장", () => { $("individual").click(); show("done", { what: "낱장 파일" }); }],
+          ["다른 방법 고르기", () => show("s4")],
+        ] };
+    },
+    s4gif: () => {
+      const st = status();
+      return { step: 4, q: "어떤 GIF로 만들까요?",
+        tip: `그림 ${boxes.length}장이 차례로 넘어가는 움직이는 그림을 만들어요. 플립북이나 표정이 바뀌는 이모티콘에 좋아요.`,
+        extra: () => [
+          segmented("빠르기", [[150, "빠르게"], [300, "보통"], [600, "천천히"], [1000, "아주 천천히"]], gifOpts.delay, (v) => (gifOpts.delay = v)),
+          segmented("크기", [[240, "작게"], [360, "보통"], [480, "크게"]], gifOpts.width, (v) => (gifOpts.width = v)),
+          segmented("순서", [["forward", "처음부터 반복"], ["pingpong", "왔다 갔다"]], gifOpts.order, (v) => (gifOpts.order = v)),
+          st,
+        ],
+        actions: [
+          ["GIF 만들기", () => run(st, async (say) => {
+            const blob = await Exporter.gif({ ...gifOpts, onProgress: (i, n) => say(`만드는 중 · ${i} / ${n}`) });
+            if (lastGif) URL.revokeObjectURL(lastGif.url);
+            lastGif = { blob, url: URL.createObjectURL(blob) };
+            show("s4gifready");
+          }), true],
+          ["다른 방법 고르기", () => show("s4")],
+        ] };
+    },
+    s4gifready: () => {
+      const preview = h("div", "coach-preview");
+      preview.append(Object.assign(new Image(), { src: lastGif.url, alt: "만든 GIF 미리보기" }));
+      const kb = Math.max(1, Math.round(lastGif.blob.size / 1024));
+      return { step: 4, q: "GIF가 완성됐어요! 마음에 드나요?",
+        tip: `파일 크기 ${kb >= 1024 ? (kb / 1024).toFixed(1) + " MB" : kb + " KB"} · 빠르기나 크기를 바꿔 다시 만들 수도 있어요.`,
+        extra: () => [preview],
+        actions: [
+          ["GIF 저장", () => { save(lastGif.blob, Exporter.baseName() + ".gif"); show("done", { what: "GIF" }); }, true],
+          ["설정 바꿔 다시 만들기", () => show("s4gif")],
+          ["다른 방법 고르기", () => show("s4")],
+        ] };
+    },
+    s4ppt: () => {
+      const st = status();
+      const title = h("label", "coach-name", `<span>첫 장 제목 · 비워도 돼요</span><input type="text" maxlength="60" placeholder="예: 우리 반 이모티콘 전시회">`);
+      const ti = title.querySelector("input");
+      ti.value = pptOpts.title;
+      const readout = h("p", "coach-readout");
+      const count = () => (readout.textContent = `슬라이드 ${Math.ceil(boxes.length / pptOpts.perSlide) + (pptOpts.title.trim() ? 1 : 0)}장`);
+      ti.oninput = () => { pptOpts.title = ti.value; count(); };
+      count();
+      return { step: 4, q: "발표 자료를 어떻게 만들까요?",
+        tip: "16:9 슬라이드로 만들어요. PowerPoint, Keynote, Google 슬라이드에서 열 수 있어요.",
+        extra: () => [
+          optionCards([1, 4, 6].map((n) => ({
+            title: n === 1 ? "한 장에 하나씩" : `한 장에 ${n}개`, desc: n === 1 ? "크게 보여 주기" : n === 4 ? "2 × 2로 모아 보기" : "3 × 2로 모아 보기",
+            on: pptOpts.perSlide === n, visual: `<i class="slide s${n}">${"<em></em>".repeat(n)}</i>`,
+            pick: () => { pptOpts.perSlide = n; show("s4ppt"); },
+          })), "slides"),
+          title,
+          segmented("번호 표시", [[true, "넣기"], [false, "빼기"]], pptOpts.numbers, (v) => (pptOpts.numbers = v)),
+          readout,
+          st,
+        ],
+        actions: [
+          ["PPT 만들기", () => run(st, async (say) => {
+            const blob = await Exporter.ppt({ ...pptOpts, onProgress: (i, n) => say(`만드는 중 · ${i} / ${n}`) });
+            save(blob, Exporter.baseName() + ".pptx");
+            show("done", { what: "PPT 파일" });
+          }), true],
+          ["다른 방법 고르기", () => show("s4")],
+        ] };
+    },
+    done: ({ what = "파일" } = {}) => ({ step: 4, q: `${what}을 저장했어요! 또 무엇을 할까요?`,
+      tip: "같은 그림으로 GIF나 발표 자료도 만들 수 있어요. 새 이미지를 불러오면 처음부터 다시 안내해 드려요.",
+      actions: [["다른 형태로도 만들기", () => show("s4"), true], ["새 이미지 불러오기", () => $("file").click()]] }),
   };
 
   let current = "";
-  function show(key, focus) {
+  function show(key, arg, focus = true) {
     current = key;
-    const [step, question, help, makeExtra, buttons] = STATES[key]();
+    const st = STATES[key](arg);
     coach.dataset.state = key;
     document.body.dataset.coach = key;
-    kicker.textContent = `${step}/4 · ${STEP_NAMES[step - 1]}`;
-    q.textContent = question;
-    tip.textContent = help;
-    extra.replaceChildren(...(makeExtra ? makeExtra() : []));
-    actions.replaceChildren(...buttons.map(([t, fn, p]) => button(t, fn, p)));
-    if (anim.howto && anim.dataset.playing !== String(step)) {
-      anim.dataset.playing = String(step);
-      anim.howto.play(step);
+    kicker.textContent = `${st.step}/4 · ${STEP_NAMES[st.step - 1]}`;
+    q.textContent = st.q;
+    tip.textContent = st.tip;
+    extra.replaceChildren(...(st.extra ? st.extra() : []));
+    actions.replaceChildren(...st.actions.map(([t, fn, p]) => button(t, fn, p)));
+    if (anim.howto && anim.dataset.playing !== String(st.step)) {
+      anim.dataset.playing = String(st.step);
+      anim.howto.play(st.step);
     }
-    // 1단계 '기울어졌어요'를 고르면 기준선 그리기를 바로 켜고 보정 도구를 강조
     document.body.classList.toggle("coach-correct", key === "s1b");
     if (key === "s1b" && $("straightenOne")?.getAttribute("aria-pressed") !== "true") $("straightenOne")?.click();
-    if (focus) q.focus({ preventScroll: true });
+    if (focus && !coach.classList.contains("folded")) q.focus({ preventScroll: true });
   }
 
   function stateForStep(step) {
     if (step === 1) return "s1";
-    if (step === 2) return (typeof boxes !== "undefined" && boxes.length) || (typeof vertical !== "undefined" && vertical.length) ? "s2b" : "s2a";
-    if (step === 3) return "s3";
+    if (step === 2) return hasGuides() ? "s2b" : "s2a";
+    if (step === 3) return "s3a";
     return "s4";
   }
 
-  // 단계가 바뀌면 그 단계 질문으로
   let lastStep = 0;
   new MutationObserver(() => {
     const step = Number(document.body.dataset.mobileStep) || 1;
     if (step !== lastStep) {
       lastStep = step;
-      show(stateForStep(step));
+      show(stateForStep(step), undefined, false);
     }
   }).observe(document.body, { attributes: true, attributeFilter: ["data-mobile-step"] });
-  // 옆 패널의 '격자로 가이드 만들기'를 직접 눌러도 다음 질문으로
   $("grid").addEventListener("click", () => {
     setTimeout(() => {
-      if (current === "s2a" && ((typeof boxes !== "undefined" && boxes.length) || (typeof vertical !== "undefined" && vertical.length))) show("s2b");
+      if (current === "s2a" && hasGuides()) show("s2b");
     }, 0);
   });
-  // 새 이미지를 불러오면 처음 질문부터
   $("file").addEventListener("change", () => {
     lastStep = 0;
-    setTimeout(() => show("s1"), 0);
+    shape = "auto";
+    setTimeout(() => show("s1", undefined, false), 0);
   });
+  // 4단계 첫 질문에 나온 그림 수를 영역 수에 맞춰 바로 고침
+  new MutationObserver(() => {
+    if (current === "s4") q.textContent = STATES.s4().q;
+  }).observe($("count"), { childList: true, characterData: true, subtree: true });
 
-  // 접기 · 펼치기
+  // ---------- 접기 · 세부 설정 ----------
   function setFolded(folded) {
     coach.classList.toggle("folded", folded);
     document.body.classList.toggle("coach-folded", folded);
     foldBtn.textContent = folded ? "안내 펼치기" : "접기";
     foldBtn.setAttribute("aria-expanded", String(!folded));
-    try {
-      localStorage.setItem(FOLD_KEY, folded ? "1" : "0");
-    } catch {}
+    try { localStorage.setItem(FOLD_KEY, folded ? "1" : "0"); } catch {}
   }
   foldBtn.onclick = () => setFolded(!coach.classList.contains("folded"));
   let folded = false;
-  try {
-    folded = localStorage.getItem(FOLD_KEY) === "1";
-  } catch {}
+  try { folded = localStorage.getItem(FOLD_KEY) === "1"; } catch {}
   setFolded(folded);
+
+  const detailBtn = h("button", "detail-toggle");
+  detailBtn.type = "button";
+  function setDetails(open) {
+    document.body.classList.toggle("simple", !open);
+    detailBtn.textContent = open ? "세부 설정 숨기기" : "세부 설정 열기";
+    detailBtn.setAttribute("aria-expanded", String(open));
+    try { localStorage.setItem(DETAIL_KEY, open ? "1" : "0"); } catch {}
+  }
+  detailBtn.onclick = () => setDetails(document.body.classList.contains("simple"));
+  let detailsOpen = false;
+  try { detailsOpen = localStorage.getItem(DETAIL_KEY) === "1"; } catch {}
+  setDetails(detailsOpen);
 
   // 넓은 화면은 옆 패널 맨 위, 휴대폰은 캔버스 위
   const phone = matchMedia("(max-width: 720px)");
   function place() {
-    if (phone.matches) document.querySelector(".layout").before(coach);
-    else document.querySelector("aside").prepend(coach);
+    const aside = document.querySelector("aside");
+    if (phone.matches) {
+      document.querySelector(".layout").before(coach);
+      aside.prepend(detailBtn);
+    } else {
+      aside.prepend(coach);
+      coach.after(detailBtn);
+    }
   }
   place();
   phone.addEventListener("change", place);
 
   lastStep = Number(document.body.dataset.mobileStep) || 1;
-  show(stateForStep(lastStep));
+  show(stateForStep(lastStep), undefined, false);
 })();
