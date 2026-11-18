@@ -36,7 +36,9 @@
     howBtn.setAttribute("aria-expanded", String(open));
   };
 
-  const STEP_NAMES = ["불러오기 · 보정", "선 맞추기", "영역 정하기", "내보내기"];
+  const CHOP_NAMES = ["불러오기 · 보정", "선 맞추기", "영역 정하기", "내보내기"];
+  const POSTER_NAMES = ["불러오기 · 보정", "종이 · 크기", "풀칠 · 여백", "인쇄"];
+  const stepNames = () => (Poster.state.on ? POSTER_NAMES : CHOP_NAMES);
   const goNext = () => $("mobileNext").click();
   const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
   const h = (tag, cls, html) => {
@@ -194,7 +196,82 @@
 
   // ---------- 질문들 ----------
   // 각 상태: { step, q, tip, extra(), actions: [[글자, 동작, 강조]] }
+  // 포스터: 종이 그림
+  const paperIcon = (k) => {
+    const [w, hh] = Poster.PAPERS[k];
+    return `<i class="paper" style="aspect-ratio:${w}/${hh}"></i>`;
+  };
+  function posterStepper() {
+    const wrap = h("div", "coach-stepper", `<span>가로 장수</span><div><button type="button" aria-label="가로 장수 줄이기">−</button><output></output><button type="button" aria-label="가로 장수 늘리기">+</button></div>`);
+    const out = wrap.querySelector("output");
+    const [minus, plus] = wrap.querySelectorAll("button");
+    const sync = () => (out.textContent = Poster.state.cols + "장");
+    minus.onclick = () => { Poster.set({ cols: Math.max(1, Poster.state.cols - 1) }); sync(); };
+    plus.onclick = () => { Poster.set({ cols: Math.min(20, Poster.state.cols + 1) }); sync(); };
+    sync();
+    return wrap;
+  }
+  function posterReadout() {
+    const box = h("div", "coach-poster-info");
+    const paint = () => {
+      const L = Poster.layout();
+      if (!L) return;
+      const [q, tone] = Poster.quality(L.dpi);
+      box.innerHTML = `<b>가로 ${L.C}장 × 세로 ${L.R}장 = ${L.C * L.R}장</b><span>완성 약 ${(L.imgW / 10).toFixed(1)} × ${(L.imgH / 10).toFixed(1)} cm · ${Poster.PAPER_NAMES[Poster.state.paper]} ${L.orient === "landscape" ? "가로" : "세로"}</span><em class="q-${tone}">선명도 ${q} · ${Math.round(L.dpi)}dpi</em>`;
+    };
+    paint();
+    Poster.onChange(paint);
+    return box;
+  }
+
   const STATES = {
+    s0: () => ({ step: 1, q: "이 이미지로 무엇을 만들까요?",
+      tip: "한 장에 여러 그림이 있으면 칸마다 자르고, 한 그림을 크게 만들려면 여러 장에 나눠 인쇄해요.",
+      extra: () => [optionCards([
+        { title: "칸마다 잘라 저장", desc: "학습지 · 이모티콘 · 카드뉴스", visual: '<i class="ex ex-img"><em></em><em></em><em></em></i>', on: !Poster.state.on, pick: () => { Poster.set({ on: false }); show("s1"); } },
+        { title: "크게 나눠 인쇄 (포스터)", desc: "여러 장에 나눠 붙이면 큰 작품", visual: '<i class="ex ex-poster"><em></em><em></em><em></em><em></em></i>', on: Poster.state.on, pick: () => { Poster.set({ on: true }); show("s1"); } },
+      ], "exports")],
+      actions: [] }),
+    pp1: () => ({ step: 2, q: "어떤 종이에 인쇄할까요?",
+      tip: "가지고 있는 프린터에 들어가는 종이를 골라 주세요. 캔버스에 종이가 나뉘는 선이 바로 보여요.",
+      extra: () => [
+        optionCards(Object.keys(Poster.PAPERS).map((k) => ({
+          title: Poster.PAPER_NAMES[k], desc: `${Poster.PAPERS[k][0] / 10} × ${Poster.PAPERS[k][1] / 10} cm`, on: Poster.state.paper === k, visual: paperIcon(k),
+          pick: () => { Poster.set({ paper: k }); show("pp1"); },
+        })), "papers"),
+        segmented("방향", [["auto", "자동"], ["portrait", "세로"], ["landscape", "가로"]], Poster.state.orient, (v) => Poster.set({ orient: v })),
+      ],
+      actions: [["다음: 크기 정하기", () => show("pp2"), true], ["칸마다 자르기로 바꾸기", () => { Poster.set({ on: false }); show(stateForStep(2)); }]] }),
+    pp2: () => ({ step: 2, q: "얼마나 크게 만들까요?",
+      tip: "가로로 몇 장을 이어 붙일지 정하면, 세로 장수는 그림 비율에 맞춰 정해져요.",
+      extra: () => [posterStepper(), posterReadout()],
+      actions: [["다음으로", goNext, true], ["종이 다시 고르기", () => show("pp1")]] }),
+    pp3: () => ({ step: 3, q: "풀칠 영역을 만들까요?",
+      tip: "이웃한 장이 겹쳐 붙을 자리를 빗금으로 인쇄해요. 풀을 바르고 다음 장을 올리면 그림이 끊기지 않고 이어져요.",
+      extra: () => [
+        segmented("풀칠 영역", [[0, "없음 · 맞대기"], [10, "1cm"], [15, "1.5cm"]], Poster.state.glue, (v) => Poster.set({ glue: v })),
+        segmented("프린터 여백", [[5, "5mm"], [7, "7mm · 추천"], [10, "10mm"]], Poster.state.margin, (v) => Poster.set({ margin: v })),
+        h("p", "coach-note", "여백 없이 인쇄가 안 되는 프린터가 많아서, 종이 가장자리는 비워 두고 붙일 때 잘라 내요. 가장자리가 잘려 나오면 여백을 늘려 주세요."),
+        posterReadout(),
+      ],
+      actions: [["다음으로", goNext, true]] }),
+    pp4: () => {
+      const st = status();
+      const L = Poster.layout();
+      const pages = L ? L.C * L.R + (Poster.state.guide ? 1 : 0) : 0;
+      return { step: 4, q: "인쇄용 PDF를 만들까요?",
+        tip: "장마다 번호와 풀칠 영역 · 자르는 선이 들어가고, 맨 앞에 붙이는 방법을 그림으로 넣어 드려요.",
+        extra: () => [
+          segmented("장 번호", [[true, "넣기"], [false, "빼기"]], Poster.state.labels, (v) => Poster.set({ labels: v })),
+          segmented("붙이는 방법 안내 장", [[true, "넣기"], [false, "빼기"]], Poster.state.guide, (v) => { Poster.set({ guide: v }); show("pp4"); }),
+          h("p", "coach-readout", `PDF ${pages}쪽${Poster.state.guide ? " (안내 1 + 포스터 " + (pages - 1) + ")" : ""}`),
+          st,
+        ],
+        actions: [["PDF 만들기", () => run(st, async (say) => { await Poster.savePdf(say); show("pdone"); }), true]] };
+    },
+    pdone: () => ({ step: 4, q: "PDF를 저장했어요! 이제 인쇄해 볼까요?",
+      tip: "인쇄할 때 배율은 ‘실제 크기(100%)’로, ‘용지에 맞춤’은 꺼 주세요. 첫 장 안내대로 점선을 자르고 풀칠 영역에 붙이면 돼요.",
+      actions: [["다시 만들기", () => show("pp4"), true], ["새 이미지 불러오기", () => $("file").click()]] }),
     s1: () => ({ step: 1, q: "불러온 이미지가 반듯한가요?",
       tip: "조금 기울어져 있어도 괜찮아요. 기준선 하나만 그어 주면 반듯하게 펴 드려요.",
       actions: [["반듯해요, 다음으로", goNext, true], ["기울어졌어요", () => show("s1b")]] }),
@@ -332,7 +409,7 @@
     const st = STATES[key](arg);
     coach.dataset.state = key;
     document.body.dataset.coach = key;
-    kicker.textContent = `${st.step}/4 · ${STEP_NAMES[st.step - 1]}`;
+    kicker.textContent = `${st.step}/4 · ${stepNames()[st.step - 1]}`;
     q.textContent = st.q;
     tip.textContent = st.tip;
     extra.replaceChildren(...(st.extra ? st.extra() : []));
@@ -349,6 +426,7 @@
 
   function stateForStep(step) {
     if (step === 1) return "s1";
+    if (Poster.state.on) return step === 2 ? "pp1" : step === 3 ? "pp3" : "pp4";
     if (step === 2) return hasGuides() ? "s2b" : "s2a";
     if (step === 3) return "s3a";
     return "s4";
@@ -367,11 +445,19 @@
       if (current === "s2a" && hasGuides()) show("s2b");
     }, 0);
   });
-  $("file").addEventListener("change", () => {
-    lastStep = 0;
+  // 새 이미지(파일 고르기 · 끌어 놓기 · 예시)를 불러오면 "무엇을 만들까요?"부터
+  const loadBeforeCoach = load;
+  load = function (...args) {
+    const r = loadBeforeCoach.apply(this, args);
     shape = "auto";
-    setTimeout(() => show("s1", undefined, false), 0);
-  });
+    Poster.set({ on: false });
+    Promise.resolve(r).then(() => {
+      if (!img) return;
+      if (Number(document.body.dataset.mobileStep) !== 1) document.querySelector("#stepNav button")?.click();
+      setTimeout(() => { lastStep = 1; show("s0", undefined, false); }, 0);
+    });
+    return r;
+  };
   // 4단계 첫 질문에 나온 그림 수를 영역 수에 맞춰 바로 고침
   new MutationObserver(() => {
     if (current === "s4") q.textContent = STATES.s4().q;
@@ -415,5 +501,5 @@
   phone.addEventListener("change", place);
 
   lastStep = Number(document.body.dataset.mobileStep) || 1;
-  show(stateForStep(lastStep), undefined, false);
+  show(img ? stateForStep(lastStep) : "s0", undefined, false);
 })();

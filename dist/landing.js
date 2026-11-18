@@ -8,7 +8,7 @@
     { art: "flash", title: "낱말 · 플래시 카드", stat: "인쇄 시트 → 카드 16장", body: "인쇄용 카드 시트를 수업 화면에 한 장씩 띄울 카드 이미지로 바꿔요." },
     { art: "comic", title: "네컷 만화 컷 나누기", stat: "4컷 → 4장", body: "학생 만화를 컷별로 나눠 발표 자료 · 영상 편집 · 전시 게시물에 써요." },
     { art: "gallery", title: "작품 사진 나누기", stat: "게시판 1컷 → 작품 15장", body: "게시판 · 칠판에 붙은 작품을 한 번에 찍고 작품별 사진으로 나눠 기록해요. 원근 보정도 돼요." },
-    { art: "sprite", title: "아이콘 · 스프라이트 시트", stat: "시트 → 프레임 PNG", body: "아이콘 묶음이나 게임 스프라이트 시트를 같은 크기의 칸별 PNG로 뽑아요." },
+    { art: "poster", title: "포스터 크게 인쇄", stat: "그림 1장 → A4 9장", body: "한 그림을 여러 장에 나눠 인쇄하고 풀칠 영역에 이어 붙이면 교실 벽을 채우는 큰 작품이 돼요. 여백 없는 인쇄가 안 되는 프린터도 괜찮아요." },
   ];
   const INK = "#2a2a35";
   const C = ["#F2726B", "#6AA8F0", "#5CC48A", "#F2B84B", "#B48CF2", "#4FC3D8"];
@@ -73,6 +73,12 @@
         cuts = cutGrid(24, 18, 140, 100, 5, 3);
         pop = `<rect x="0" y="0" width="20" height="24" fill="#fff"/><path d="M3 19 q5 -12 10 -2 t4 -6" stroke="${C[1]}" stroke-width="2.4" fill="none"/>`;
         break;
+      case "poster":
+        body = grid(20, 6, 3, 3, 38, 34, 3, (x, y, i, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" class="ua-paper"/><rect x="${x + w - 5}" y="${y}" width="5" height="${h}" fill="#f6e7c8"/>`) +
+          `<circle cx="80" cy="60" r="40" fill="${C[3]}" stroke="${INK}" stroke-width="3" opacity=".95"/><circle cx="66" cy="50" r="5" fill="${INK}"/><circle cx="94" cy="50" r="5" fill="${INK}"/><path d="M60 70 q20 20 40 0" stroke="${INK}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`;
+        cuts = `<line x1="58.5" y1="2" x2="58.5" y2="118"/><line x1="99.5" y1="2" x2="99.5" y2="118"/><line x1="16" y1="41.5" x2="144" y2="41.5"/><line x1="16" y1="78.5" x2="144" y2="78.5"/>`;
+        pop = `<rect x="0" y="0" width="38" height="34" class="ua-paper"/><path d="M0 30 q14 -18 30 -10 l0 14 h-30z" fill="${C[3]}" stroke="${INK}" stroke-width="2"/>`;
+        break;
       case "sprite":
         body = `<rect x="22" y="14" width="116" height="92" rx="3" fill="#1f1d2b"/>` + grid(28, 20, 6, 4, 15, 18, 3, (x, y, i, w, h) => {
           const col = C[(i >> 1) % 6], f = i % 6;
@@ -82,7 +88,7 @@
         pop = `<rect x="0" y="0" width="15" height="18" rx="2" fill="#1f1d2b"/><rect x="4" y="3" width="7" height="6" fill="${C[3]}"/><rect x="3" y="9" width="9" height="5" fill="${C[3]}"/>`;
         break;
     }
-    const at = { worksheet: "124 2 12", emoji: "122 0 10", cardnews: "128 14 9", sticker: "130 2 0", flash: "126 4 10", comic: "96 92 -6", gallery: "130 4 9", sprite: "136 6 10" }[kind].split(" ");
+    const at = { poster: "120 84 -8", worksheet: "124 2 12", emoji: "122 0 10", cardnews: "128 14 9", sticker: "130 2 0", flash: "126 4 10", comic: "96 92 -6", gallery: "130 4 9", sprite: "136 6 10" }[kind].split(" ");
     return `<svg viewBox="0 0 160 120" class="ua" aria-hidden="true"><g class="ua-body">${body}</g><g class="ua-cuts">${cuts}</g><g class="ua-pop" transform="translate(${at[0]} ${at[1]}) rotate(${at[2]})">${pop}</g></svg>`;
   }
 

@@ -1019,8 +1019,8 @@ body.has-image .up-new, body:not(.has-image) .up-change { display: none; }
   .coach-options.slides .coach-opt { width: 112px; grid-template-columns: none; grid-template-rows: auto auto auto; justify-items: center; text-align: center; padding: 8px; }
   .coach-options.slides .coach-opt .slide { margin-bottom: 4px; }
   .coach-options.slides .coach-opt small { display: none; }
-  .coach-seg { width: 220px; }
-  .coach-seg:has(.coach-seg-row button:nth-child(4)) { width: 320px; }
+  .coach-seg { width: auto; min-width: 200px; }
+  .coach-seg-row button { white-space: nowrap; padding: 4px 11px; }
   .coach-range { width: 300px; }
   .coach-quick { width: 240px; }
   .coach-name { width: 280px; }
@@ -1042,4 +1042,49 @@ body.has-image .up-new, body:not(.has-image) .up-change { display: none; }
 @media (min-width: 721px) and (max-width: 1280px) {
   .toolbar > div:first-child b, #zoomFitWidth, #zoomFitHeight { display: none; }
   .coach-tip { white-space: normal; }
+}
+
+/* ---------- 11. 포스터 분할 인쇄 (poster.js) ---------- */
+#posterOverlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9; display: none; overflow: visible; }
+body.poster-mode:not([data-mobile-step='1']) #posterOverlay { display: block; }
+body.poster-mode #boxes, body.poster-mode #guideLayer, body.poster-mode #frameResizeLayer, body.poster-mode .toolbar .badge,
+body.poster-mode .mobile-guide-tools { display: none !important; }
+.poster-section { display: none; }
+body.poster-mode .poster-section { display: block; }
+body.poster-mode:not([data-mobile-step='1']) aside .section:not(.poster-section) { display: none !important; }
+/* 포스터 모드 4단계: 캔버스를 그대로 보여 주고 낱장 미리보기는 숨김 */
+body.poster-mode[data-mobile-step='4'] .editor[data-mobile-steps] { display: flex !important; flex-direction: column; }
+body.poster-mode .previewhead, body.poster-mode #previews, body.poster-mode .exportbar, body.poster-mode .file-save-browser-hint:not(.file-save-entry-hint) { display: none !important; }
+#posterSummary { display: block; margin: 4px 0 12px; padding: 10px 12px; border-radius: 9px; background: var(--accent-bg); font-size: 12.5px; line-height: 1.55; }
+#posterSummary[data-quality='low'] { background: var(--amber-bg); }
+.poster-status { margin: 8px 0; font-size: 12.5px; font-weight: 600; color: var(--accent); }
+.poster-status:empty { display: none; }
+#posterExit { margin-top: 8px; }
+.poster-section h2 i { background: var(--amber-bg); color: var(--amber); }
+/* 안내 카드 부품 */
+.coach-opt .paper { display: block; height: 30px; justify-self: center; border: 1.5px solid var(--border-strong); border-radius: 2px; background: var(--panel); box-shadow: 1px 1px 0 var(--border); }
+.coach-options.papers .coach-opt { width: 112px; }
+.ex-poster { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 40px; height: 40px; padding: 2px; border-radius: 6px; background: var(--brand-grad); }
+.ex-poster em { position: static; width: auto; height: auto; border: 0; border-radius: 2px; background: rgba(255, 255, 255, .55); }
+.ex-poster em:nth-child(2) { background: rgba(255, 255, 255, .3); }
+.ex-poster em:nth-child(3) { background: rgba(255, 255, 255, .4); }
+.ex-poster em:nth-child(4) { background: rgba(255, 255, 255, .2); }
+.coach-poster-info { display: grid; gap: 2px; padding: 8px 12px; border-radius: 11px; background: var(--panel); border: 1px solid var(--border); }
+.coach-poster-info b { font-size: 14px; }
+.coach-poster-info span { font-size: 12px; color: var(--muted); }
+.coach-poster-info em { font-style: normal; font-size: 12px; font-weight: 700; }
+.coach-poster-info .q-good { color: var(--ok); }
+.coach-poster-info .q-ok { color: var(--accent); }
+.coach-poster-info .q-low { color: var(--amber); }
+.coach-note { font-size: 12px; color: var(--muted); line-height: 1.5; }
+@media (min-width: 721px) {
+  .coach-note { max-width: 300px; align-self: center; }
+  .coach-options.papers .coach-opt { grid-template-columns: 28px minmax(0, 1fr); }
+  .coach-options.papers .coach-opt .paper { height: 28px; }
+}
+@media (max-width: 720px) {
+  .coach-options.papers { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .coach-options.papers .coach-opt { width: auto; padding: 8px 2px; }
+  .coach-opt .paper { height: 22px; }
+  .coach-poster-info { padding: 6px 10px; }
 }

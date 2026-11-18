@@ -27,9 +27,11 @@
       d.classList.toggle("on", i === step - 1);
       d.disabled = tabs()[i]?.disabled ?? false;
     });
-    label.textContent = `${step}/4 · ${names[step - 1]}`;
+    const n = typeof Poster !== "undefined" ? Poster.stepNames() : names;
+    label.textContent = `${step}/4 · ${n[step - 1]}`;
   }
   new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ["data-mobile-step"] });
+  window.addEventListener("chopper-mode", sync);
 
   function place() {
     const coachNav = document.querySelector(".coach-nav");
