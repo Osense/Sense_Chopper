@@ -38,16 +38,33 @@
 </header>
 
 <main>
-  <section class="intro" data-mobile-steps="1">
-    <p class="eyebrow">Sense Chopper</p>
-    <h1>한 장의 그림을,<br>칸마다 한 번에.</h1>
-    <p>학습지나 스캔한 종이에 그린 여러 그림을 격자에 맞춰 칸마다 잘라 내고, 이름을 붙여 한 번에 저장해요.</p>
-    <ol class="intro-steps">
-      <li><b>1</b>불러오기 · 기울기 보정</li>
-      <li><b>2</b>가로 · 세로선 맞추기</li>
-      <li><b>3</b>자를 영역 다듬기</li>
-      <li><b>4</b>저장</li>
-    </ol>
+  <section class="landing" data-mobile-steps="1">
+    <div class="ad-wall" id="adWall" aria-hidden="true"></div>
+    <div class="landing-hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Sense Chopper</p>
+        <h1>한 장에 가득한 그림,<br><span class="grad">한 장씩 따로</span> 저장.</h1>
+        <p class="lead">학습지 · 이모티콘 활동지 · 카드뉴스처럼 한 페이지에 모인 수많은 이미지를 격자에 맞춰 칸마다 잘라, 번호 붙은 파일로 한 번에 저장해요.</p>
+        <label class="hero-upload" for="file">
+          <svg class="icon up"><use href="#i-upload"/></svg>
+          <span class="hu-text"><b>이미지 선택</b><span>눌러서 고르거나 이 화면 아무 곳에나 끌어 놓으세요</span></span>
+          <small>PNG · JPG · WEBP</small>
+        </label>
+        <div class="hero-sub">
+          <button id="trySample" type="button">예시 학습지로 해 보기</button>
+          <span class="privacy"><svg class="icon"><use href="#i-lock"/></svg>무료 · 회원가입 없음 · 이미지는 이 기기 안에서만 처리</span>
+        </div>
+      </div>
+      <figure class="howto" data-howto aria-label="사용법 애니메이션"></figure>
+    </div>
+    <div class="usecases">
+      <div class="usecases-head">
+        <h2>이럴 때 써요</h2>
+        <p>한 페이지에 모인 여러 이미지를 낱장으로 나눠야 할 때, 칸 수만 정하면 끝나요.</p>
+      </div>
+      <ul class="usecase-grid" id="usecaseGrid"></ul>
+    </div>
+    <div class="drop-veil" aria-hidden="true"><svg class="icon"><use href="#i-upload"/></svg><b>여기에 놓으면 바로 불러와요</b></div>
   </section>
 
   <div class="layout">
@@ -178,6 +195,7 @@
 
 <dialog id="helpDialog" aria-labelledby="helpTitle">
   <div class="dialog-head"><h2 id="helpTitle">쎈스 초퍼 사용법</h2><button id="helpClose" type="button">닫기</button></div>
+  <figure class="howto" data-howto data-howto-compact aria-label="사용법 애니메이션"></figure>
   <ol class="help-steps">
     <li><b>불러오기 · 보정</b><span>학습지 사진이나 스캔 이미지를 올려요. 비뚤어졌다면 기울기 값을 바꾸거나, 선 1개(수평) · 선 4개(원근)를 그어 반듯하게 펴요.</span></li>
     <li><b>선 정렬</b><span>가로 · 세로 칸 수를 넣고 격자를 만든 뒤, 파란 선을 끌어 각 그림의 가운데에 맞춰요.</span></li>
@@ -199,5 +217,7 @@
 <script src="frame-resize.js"></script>
 <script src="file-save.js"></script>
 <script src="shell.js"></script>
+<script src="howto.js"></script>
+<script src="landing.js"></script>
 </body>
 </html>

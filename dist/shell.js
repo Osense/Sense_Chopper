@@ -28,3 +28,42 @@
     if (e.target === help) help.close();
   });
 })();
+
+// 두 칸 화면(태블릿 · PC)에서는 기울기 · 원근 보정 도구를 옆 패널로 옮겨 캔버스를 넓게 씁니다.
+// 휴대폰에서는 원래대로 캔버스 위에 둡니다. 옮겨도 버튼 동작은 그대로입니다.
+(() => {
+  const rotateBar = document.querySelector(".canvas-rotation");
+  const correction = document.querySelector(".correction-panel");
+  const toolbar = document.querySelector(".toolbar");
+  if (!rotateBar || !correction || !toolbar) return;
+  const panel = document.createElement("div");
+  panel.className = "panel-tools";
+  panel.innerHTML = "<h3>기울기 · 원근 보정</h3>";
+  const twoColumn = matchMedia("(min-width: 721px)");
+  function place() {
+    if (twoColumn.matches) {
+      panel.append(rotateBar, correction);
+      if (!panel.isConnected) document.querySelector("aside .section").append(panel);
+    } else {
+      toolbar.after(rotateBar);
+      rotateBar.after(correction);
+      panel.remove();
+    }
+    if (typeof img !== "undefined" && img) requestAnimationFrame(() => fit());
+  }
+  place();
+  twoColumn.addEventListener("change", place);
+
+  // 캔버스 크기가 바뀌면(단계 이동 · 화면 회전 · 패널 열림) 화면 맞춤을 다시 계산
+  const viewport = $("viewport");
+  let lastW = 0, lastH = 0, raf = 0;
+  new ResizeObserver(() => {
+    const w = viewport.clientWidth, h = viewport.clientHeight;
+    if (Math.abs(w - lastW) < 2 && Math.abs(h - lastH) < 2) return;
+    lastW = w; lastH = h;
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      if (img && ["fit", "width", "height"].includes($("zoom").value)) fit();
+    });
+  }).observe(viewport);
+})();
