@@ -47,7 +47,8 @@ npm test      # 회귀검사
 | `dist/frame-resize.js` | 영역 가운데 점 · 테두리 손잡이 |
 | `dist/file-save.js` | 휴대폰 · 앱 안 브라우저 저장(공유해서 저장) |
 | `dist/shell.js` | 밝게 · 어둡게 전환, 사용법 창, 보정 도구 패널 배치, 캔버스 크기 변화 감지 |
-| `dist/howto.js` | 사용법 애니메이션 (첫 화면 · 사용법 창, 화면에 보일 때만 재생, 움직임 줄이기 설정 존중) |
+| `dist/howto.js` | 사용법 애니메이션: 기준선 긋기 → 수평, 선 하나씩 끌어 맞추기, 모서리로 크기 · 가운데 점으로 이동, 자르기 · ZIP. 카메라 확대와 도구 칩. 전체 과정 또는 한 단계만 반복 (첫 화면 · 사용법 창 · 안내 카드) |
+| `dist/coach.js` | 단계별 안내 카드: 단계마다 질문하고("그림이 가로로 몇 개인가요?") 대답 버튼으로 다음 할 일 진행, 그 단계 애니메이션 반복 · 접기 기억 |
 | `dist/landing.js` | 첫 화면 활용 사례 배경 · 카드, 예시 학습지 생성, 화면 전체 끌어 놓기 |
 | `dist/brand/wsns-mark.svg` | WSNS 정사각형 로고 (WesNS 레포 `public/brand`와 같은 파일) |
 | `dist/fonts/` | Pretendard · JetBrains Mono (OFL) |
@@ -58,6 +59,8 @@ npm test      # 회귀검사
 `main`에 푸시하면 `.github/workflows/pages.yml`이 검사를 통과한 뒤 `dist`를 GitHub Pages에 배포합니다. 레포 **Settings → Pages → Source: GitHub Actions**가 켜져 있어야 합니다.
 
 ## 버전
+
+0.3.0 — 사용법 애니메이션 동작을 또렷하게(기준선 · 선 끌기 · 영역 조절), 작업 중 단계별 질문형 안내 카드
 
 0.2.0 — 가로 화면(PC · 태블릿) 꽉 찬 작업 공간, 사용법 애니메이션, 활용 사례 첫 화면
 
