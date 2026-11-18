@@ -273,7 +273,14 @@ const Poster = (() => {
 
   // ---------- 아주 작은 PDF 만들기 (장마다 JPEG 한 장) ----------
   const enc = new TextEncoder();
-  const toJpeg = (c) => new Promise((r) => c.toBlob(async (b) => r(new Uint8Array(await b.arrayBuffer())), "image/jpeg", 0.92));
+  // toBlob은 화면이 한가할 때만 돌아서 애니메이션 중엔 몇 초씩 멈출 수 있어요 → 바로 인코딩
+  const toJpeg = async (c) => {
+    const b64 = c.toDataURL("image/jpeg", 0.92).split(",")[1];
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  };
   function buildPdf(pages) {
     const chunks = [];
     let size = 0;
@@ -305,27 +312,70 @@ const Poster = (() => {
     push(`trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
     return new Blob(chunks, { type: "application/pdf" });
   }
-  async function pdf(onProgress) {
+  const tick = () => new Promise((r) => setTimeout(r, 16));
+  const cancelled = () => Object.assign(Error("취소"), { name: "AbortError" });
+  async function pdf(onProgress, signal) {
     const L = layout();
     if (!L) throw Error("이미지가 없어요.");
     await document.fonts?.ready;
     const pages = [];
     const total = L.C * L.R + (state.guide ? 1 : 0);
     let done = 0;
+    onProgress?.(0, total);
+    await tick();
     if (state.guide) {
       const [c, LL] = renderGuide(L);
       pages.push({ wmm: LL.w, hmm: LL.h, pxW: c.width, pxH: c.height, jpeg: await toJpeg(c) });
       onProgress?.(++done, total);
+      await tick();
     }
     for (let j = 0; j < L.R; j++)
       for (let i = 0; i < L.C; i++) {
+        if (signal?.aborted) throw cancelled();
         const c = renderPage(L, page(L, i, j));
         pages.push({ wmm: L.w, hmm: L.h, pxW: c.width, pxH: c.height, jpeg: await toJpeg(c) });
         c.width = c.height = 0;
         onProgress?.(++done, total);
-        await new Promise((r) => setTimeout(r, 0));
+        await tick();
       }
+    if (signal?.aborted) throw cancelled();
+    onProgress?.(total, total, true);
+    await tick();
     return buildPdf(pages);
+  }
+
+  // ---------- 만드는 중 창 (진행 막대 · 취소) ----------
+  const prog = document.createElement("dialog");
+  prog.className = "poster-progress";
+  prog.innerHTML = `
+    <h3>인쇄용 PDF를 만들고 있어요</h3>
+    <p class="pp-label">준비하는 중…</p>
+    <div class="pp-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
+    <p class="pp-meta"><span class="pp-count"></span><span class="pp-eta"></span></p>
+    <div class="pp-actions"><button type="button" class="pp-cancel">취소</button></div>`;
+  document.body.append(prog);
+  const P_ = (sel) => prog.querySelector(sel);
+  function openProgress(ctrl) {
+    const t0 = performance.now();
+    P_(".pp-cancel").disabled = false;
+    P_(".pp-cancel").textContent = "취소";
+    P_(".pp-cancel").onclick = () => { ctrl.abort(); P_(".pp-cancel").disabled = true; P_(".pp-cancel").textContent = "취소하는 중…"; };
+    const stop = () => { if (!P_(".pp-cancel").disabled) P_(".pp-cancel").click(); };
+    prog.oncancel = (e) => { e.preventDefault(); stop(); };
+    prog.onkeydown = (e) => { if (e.key === "Escape") { e.preventDefault(); stop(); } };
+    update(0, 1);
+    try { prog.showModal(); } catch { prog.setAttribute("open", ""); }
+    function update(i, n, packing) {
+      const pct = n ? Math.round((i / n) * (packing ? 100 : 96)) : 0;
+      P_(".pp-bar i").style.width = pct + "%";
+      P_(".pp-bar").setAttribute("aria-valuenow", pct);
+      P_(".pp-label").textContent = packing ? "PDF 파일로 묶는 중…" : i === 0 ? "준비하는 중…" : `${i}번째 장까지 그렸어요`;
+      P_(".pp-count").textContent = `${i} / ${n}장 · ${pct}%`;
+      const el = (performance.now() - t0) / 1000;
+      const left = i > 0 && i < n ? Math.ceil((el / i) * (n - i)) : 0;
+      P_(".pp-eta").textContent = left > 0 ? `남은 시간 약 ${left}초` : "";
+    }
+    return { update, close: () => { prog.close?.(); prog.removeAttribute("open"); } };
   }
 
   // ---------- 상태 · 옆 패널 ----------
@@ -382,8 +432,19 @@ const Poster = (() => {
   F.labels.onchange = () => set({ labels: F.labels.checked });
   F.guide.onchange = () => set({ guide: F.guide.checked });
   $("posterExit").onclick = () => set({ on: false });
+  // 저장하면 Blob, 취소하면 null
   async function savePdf(say) {
-    const blob = await pdf((i, n) => say?.(`만드는 중 · ${i} / ${n}`));
+    const ctrl = new AbortController();
+    const ui = openProgress(ctrl);
+    let blob;
+    try {
+      blob = await pdf((i, n, packing) => { ui.update(i, n, packing); say?.(packing ? "PDF로 묶는 중…" : `만드는 중 · ${i} / ${n}`); }, ctrl.signal);
+    } catch (e) {
+      if (e.name === "AbortError") { say?.("취소했어요. 설정을 바꿔 다시 만들 수 있어요."); return null; }
+      throw e;
+    } finally {
+      ui.close();
+    }
     save(blob, (($("prefix").value || "포스터").trim() || "포스터") + "_포스터.pdf");
     say?.("저장했어요. 인쇄할 때 ‘실제 크기(100%)’를 골라 주세요.");
     return blob;

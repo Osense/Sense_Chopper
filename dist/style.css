@@ -1088,3 +1088,15 @@ body.poster-mode .previewhead, body.poster-mode #previews, body.poster-mode .exp
   .coach-opt .paper { height: 22px; }
   .coach-poster-info { padding: 6px 10px; }
 }
+
+/* 포스터 PDF 만드는 중 창 */
+.poster-progress { width: min(420px, calc(100vw - 32px)); border: 1px solid var(--border); border-radius: 16px; padding: 22px 22px 18px; background: var(--panel); color: var(--text); box-shadow: 0 24px 60px oklch(0.2 0.05 280 / 0.25); }
+.poster-progress::backdrop { background: oklch(0.2 0.03 280 / 0.35); }
+.poster-progress h3 { margin: 0 0 6px; font-size: 17px; }
+.poster-progress .pp-label { margin: 0 0 12px; font-size: 13px; opacity: .75; }
+.poster-progress .pp-bar { height: 10px; border-radius: 99px; background: oklch(0.93 0.01 280); overflow: hidden; }
+:root[data-theme='dark'] .poster-progress .pp-bar { background: oklch(0.3 0.02 280); }
+.poster-progress .pp-bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #7c5cf0, #38bcd8); transition: width .25s ease; }
+.poster-progress .pp-meta { display: flex; justify-content: space-between; margin: 8px 0 14px; font-size: 12.5px; font-variant-numeric: tabular-nums; opacity: .7; }
+.poster-progress .pp-actions { display: flex; justify-content: flex-end; }
+.poster-progress .pp-cancel { min-width: 88px; }

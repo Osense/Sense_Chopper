@@ -267,7 +267,7 @@
           h("p", "coach-readout", `PDF ${pages}쪽${Poster.state.guide ? " (안내 1 + 포스터 " + (pages - 1) + ")" : ""}`),
           st,
         ],
-        actions: [["PDF 만들기", () => run(st, async (say) => { await Poster.savePdf(say); show("pdone"); }), true]] };
+        actions: [["PDF 만들기", () => run(st, async (say) => { if (await Poster.savePdf(say)) show("pdone"); }), true]] };
     },
     pdone: () => ({ step: 4, q: "PDF를 저장했어요! 이제 인쇄해 볼까요?",
       tip: "인쇄할 때 배율은 ‘실제 크기(100%)’로, ‘용지에 맞춤’은 꺼 주세요. 첫 장 안내대로 점선을 자르고 풀칠 영역에 붙이면 돼요.",
