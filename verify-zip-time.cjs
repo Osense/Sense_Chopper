@@ -1,7 +1,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync('dist/app.js','utf8');
 const context=vm.createContext({Blob,TextEncoder,Uint8Array,Uint32Array,DataView});
-vm.runInContext(source.slice(source.indexOf('const crcTable='),source.indexOf('async function download(')),context);
+vm.runInContext(source.slice(source.search(/const crcTable\s*=/),source.indexOf('async function download(')),context);
 function decode(time,date){return [1980+(date>>9),(date>>5)&15,date&31,time>>11,(time>>5)&63,(time&31)*2]}
 (async()=>{
  const originalTZ=process.env.TZ;

@@ -1,81 +1,58 @@
-# 크롭노트 원본 소스
+# 쎈스 초퍼 (Sense Chopper)
 
-최근 배포 버전 7의 원본입니다. 선 1개 기울기 보정, 가로 2개·세로 2개 원근 보정, 영역 자동 맞춤, 출력 배율과 ZIP 저장 기능을 포함합니다. 이미지 처리는 브라우저에서 실행하며 별도 백엔드·데이터베이스·API 키는 필요 없습니다.
+WSNS studio [웨스엔에스 스튜디오]의 웹앱입니다. 학습지나 스캔한 종이 한 장에 그린 여러 그림을 격자에 맞춰 칸마다 잘라 내고, 이름을 붙여 한 번에 저장합니다. 이미지 처리는 모두 브라우저 안에서 하며 서버 · 데이터베이스 · API 키가 없습니다. 무료입니다.
 
-## VS Code 실행
+- 서비스 주소: https://osense.github.io/Sense_Chopper/
+- 제품 소개: https://osense.github.io/WesNS/products/sense-chopper/
 
-1. 압축을 풀고 `crop-note-source` 폴더를 VS Code로 엽니다.
-2. Node.js 20 이상을 설치합니다.
-3. 터미널에서 실행합니다. 외부 패키지가 없어 `npm install`은 필요 없습니다.
+## 작업 흐름 (4단계)
+
+| 단계 | 하는 일 | 주요 파일 |
+|---|---|---|
+| 1. 불러오기 · 기울기 보정 | 이미지 불러오기, 회전 각도 조절, 선 1개(수평) · 선 4개(원근) 보정 | `app.js`, `rotation.js`, `correction*.js` |
+| 2. 가로 · 세로선 맞추기 | 칸 수로 격자 만들기, 가이드 선을 그림 가운데로 끌기 | `guides.js` |
+| 3. 자를 영역 다듬기 | 교점마다 생긴 영역을 가운데 점 · 테두리 손잡이로 조절 | `frame-resize.js`, `dimensions.js` |
+| 4. 저장하기 | 파일 이름 · 형식 · 크기, 개별 · 선택 · ZIP 저장 | `app.js`, `file-save.js` |
+
+넓은 화면(1100px 초과)은 단계 탭이 머리글 가운데, 태블릿 · 휴대폰은 화면 아래에 고정됩니다. 휴대폰에서는 캔버스가 위, 설정이 아래로 쌓입니다.
+
+## 실행
+
+Node.js 20 이상이 필요합니다. 외부 패키지가 없어 `npm install`은 필요 없습니다.
 
 ```sh
-npm run dev
+npm run dev   # http://localhost:5173
+npm test      # 회귀검사
 ```
 
-브라우저에서 http://localhost:5173 을 엽니다. 파일을 수정한 뒤 새로고침합니다. 종료는 Ctrl+C입니다. 원근 보정은 Web Worker를 사용하므로 HTML을 더블 클릭하기보다 이 방법으로 실행하세요. 개발 서버는 내 PC에서만 실행되며 실제 정적 배포에는 필요 없습니다.
+원근 보정은 Web Worker를 쓰므로 HTML을 더블 클릭하지 말고 위 방법으로 실행하세요.
 
-## 수정 위치
+## 파일 구조
 
-`dist` 폴더 안의 HTML·CSS·JavaScript가 직접 수정할 원본입니다. 별도 빌드 과정은 없습니다.
+`dist` 폴더가 원본이자 배포본입니다. 빌드 과정이 없습니다.
 
 | 파일 | 역할 |
 |---|---|
-| `dist/index.html`, `dist/style.css` | 화면 구성과 스타일 |
-| `dist/app.js` | 이미지 불러오기, 크롭, 미리보기, 배율, PNG·ZIP 저장 |
-| `dist/guides.js` | 가이드와 격자, 영역 자동 맞춤 |
-| `dist/dimensions.js` | 영역 크기·비율 |
-| `dist/rotation.js`, `dist/rotation.css` | 회전·캔버스 확장 |
-| `dist/navigation.js`, `dist/navigation.css` | 화면 이동·확대·터치 |
-| `dist/correction.js` | 기준선 보정 UI, 원본 복원 |
-| `dist/correction-math.js` | 기울기·원근 보정 계산 |
-| `dist/correction-worker.js` | 브라우저 백그라운드 원근 보정 |
+| `dist/index.html` | 화면 구성, 머리글(WSNS studio 로고 · 발음 표기), 사용법 창 |
+| `dist/style.css` | 전체 스타일 하나로 통합 (WSNS 디자인 토큰, 밝게 · 어둡게, 반응형) |
+| `dist/app.js` | 이미지 불러오기, 영역, 미리보기, 출력 크기, PNG · ZIP 저장 |
+| `dist/guides.js` | 가이드 선 · 격자, 영역 자동 맞춤 |
+| `dist/dimensions.js` | 영역 크기 · 비율 입력 |
+| `dist/rotation.js` | 회전 · 캔버스 확장 |
+| `dist/navigation.js` | 화면 이동 · 확대 · 터치 |
+| `dist/correction.js`, `correction-math.js`, `correction-worker.js` | 기준선 보정 UI · 계산 · 백그라운드 처리 |
+| `dist/mobile-steps.js` | 4단계 흐름 (단계 탭, 이전 · 다음, 단계별 보이기) |
+| `dist/frame-resize.js` | 영역 가운데 점 · 테두리 손잡이 |
+| `dist/file-save.js` | 휴대폰 · 앱 안 브라우저 저장(공유해서 저장) |
+| `dist/shell.js` | 밝게 · 어둡게 전환, 사용법 창 |
+| `dist/brand/wsns-mark.svg` | WSNS 정사각형 로고 (WesNS 레포 `public/brand`와 같은 파일) |
+| `dist/fonts/` | Pretendard · JetBrains Mono (OFL) |
 | `verify*.cjs` | 회귀검사 |
 
-## 검사
+## 배포
 
-```sh
-npm test
-```
-
-검사 중 생성되는 `outputs` 폴더는 Git에서 제외됩니다. 계산·상태·저장 관련 검사이며 실제 브라우저 조작 검사를 대신하지 않습니다. 최신 기능은 당시 브라우저 연결 지연으로 최종 화면 검증을 완료하지 못했습니다.
-
-## GitHub에 처음 올리기
-
-GitHub에서 빈 저장소를 만들고 아래 주소를 본인의 실제 저장소 주소로 바꿔 실행하세요. GitHub 인증은 VS Code/Git 안내에 따라 진행합니다.
-
-```sh
-git init
-git add .
-git commit -m "Initial Crop Note source"
-git branch -M main
-git remote add origin https://github.com/YOUR_ACCOUNT/YOUR_REPOSITORY.git
-git push -u origin main
-```
-
-이후 VS Code 소스 제어 또는 Sourcetree에서 커밋하고 푸시하면 됩니다.
-
-## Cloudflare Pages 설정
-
-GitHub 저장소를 연결하고 다음과 같이 지정합니다.
-
-| 설정 | 값 |
-|---|---|
-| Production branch | `main` |
-| Framework preset | `None` |
-| Build command | `exit 0` |
-| Build output directory | `dist` |
-| Root directory | 저장소 루트, 기본값 유지 |
-
-`dist`의 파일을 모두 배포하세요. 특히 `correction-worker.js`가 빠지면 안 됩니다. `main`에 푸시한 변경이 자동 배포됩니다. 테스트와 `tools` 폴더는 배포하지 않아도 됩니다.
-
-이 코드 자체에는 로그인 기능이 없습니다. 공개 호스팅하면 학생은 계정 없이 링크로 접속합니다. 기존 ChatGPT 사이트의 접근 제한은 별도 호스팅에 이전되지 않습니다. PWA 오프라인 캐시는 아직 포함되지 않았습니다.
+`main`에 푸시하면 `.github/workflows/pages.yml`이 검사를 통과한 뒤 `dist`를 GitHub Pages에 배포합니다. 레포 **Settings → Pages → Source: GitHub Actions**가 켜져 있어야 합니다.
 
 ## 버전
 
-프로젝트 버전: 0.0.1
-
-기반 배포 버전: 7
-
-원본 Git 커밋: `8dae1dcbd61c9acd228533eb73e37e6c550b56de`
-
-앱 코드는 원본 그대로이며 실행 도구와 이 안내를 추가했습니다. 기존 서비스의 프로젝트 설정·인증 정보·Git 내부 기록은 제외했습니다.
+0.1.0 — 크롭노트(배포 버전 7)를 쎈스 초퍼로 이름을 바꾸고 WSNS 디자인으로 다시 정리
