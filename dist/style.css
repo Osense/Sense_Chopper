@@ -872,3 +872,101 @@ body.has-image .up-new, body:not(.has-image) .up-change { display: none; }
   .coach-anim { width: 78%; margin: 0 auto; }
   .coach-q { font-size: 16px; }
 }
+
+/* ---------- 9. 휴대폰 세로: 한 화면 앱 ----------
+   위에서부터 머리글 → 캔버스(남은 높이 전부) → 질문 카드 → 아래 막대(이전 · 진행 · 다음).
+   단계 탭 · 제목 줄은 아래 막대와 겹치므로 숨기고, 버튼과 글자를 휴대폰 크기로 줄입니다. */
+.coach-how { display: none; }
+.phone-bar { display: none; }
+@media (max-width: 720px) {
+  :root { --top-h: 48px; }
+  button, select { min-height: 36px; font-size: 13px; }
+  .wordmark .mark { height: 26px; }
+  .step-tabs, .mobile-step-heading { display: none !important; }
+  body.has-image { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }
+  body:not(.has-image) { padding-bottom: 0; }
+  #toast { bottom: calc(76px + env(safe-area-inset-bottom)); font-size: 13px; }
+
+  .phone-bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); background: color-mix(in oklch, var(--panel) 94%, transparent);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid var(--border);
+  }
+  body:not(.has-image) .phone-bar { display: none; }
+  .phone-bar #mobilePrevious, .phone-bar #mobileNext { min-width: 78px; min-height: 40px; font-size: 14px; }
+  .pb-progress { display: grid; justify-items: center; gap: 6px; min-width: 0; }
+  .pb-dots { display: flex; gap: 5px; }
+  .pb-dots button { width: 20px; height: 5px; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 3px; background: var(--border-strong); transition: width .2s, background .2s; }
+  .pb-dots button.done { background: color-mix(in oklch, var(--accent) 55%, transparent); }
+  .pb-dots button.on { width: 32px; background: var(--brand-grad); }
+  .pb-label { font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+  /* 질문 카드 */
+  .coach { display: block; margin: 0 0 8px; padding: 12px 12px 10px; border: 1px solid var(--border); border-radius: 16px; background: var(--panel); box-shadow: var(--shadow-card); }
+  .coach-anim { display: none; max-width: 300px; margin: 0 auto 10px; }
+  .coach.show-anim .coach-anim { display: block; }
+  .coach-top { gap: 2px; }
+  .coach-top .coach-kicker { flex: 1; font-size: 11.5px; }
+  .coach-how { display: inline-flex; }
+  .coach-how, .coach-fold { min-height: 26px !important; padding: 2px 7px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .coach-q { margin: 4px 0 2px; font-size: 16.5px; line-height: 1.35; }
+  .coach-tip { font-size: 12.5px; line-height: 1.5; }
+  .coach-extra:not(:empty) { margin-top: 10px; gap: 6px; }
+  .coach-actions { margin-top: 10px; gap: 2px 4px; justify-content: center; }
+  .coach-actions button.primary { flex: 1 1 100%; min-height: 42px; font-size: 14.5px; border-radius: 11px; }
+  .coach-actions button:not(.primary) { flex: 0 0 auto; min-height: 32px; padding: 4px 8px; border: 0; background: transparent; color: var(--accent); font-size: 13px; font-weight: 600; }
+  .coach-actions button:not(.primary):hover:not(:disabled) { background: var(--accent-bg); }
+  .coach-options.shapes, .coach-options.exports, .coach-options.slides { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .coach-opt, .coach-options.exports .coach-opt { display: grid; grid-template-columns: none; grid-template-rows: auto auto; justify-items: center; align-content: center; gap: 5px; padding: 9px 4px 8px; text-align: center; border-radius: 11px; }
+  .coach-opt small { display: none; }
+  .coach-opt b, .coach-options.exports .coach-opt b, .coach-options.slides .coach-opt b { font-size: 12px; line-height: 1.3; }
+  .coach-opt .shape { height: 20px; max-width: 38px; margin: 0; }
+  .coach-opt .shape.dashed { width: 38px; }
+  .coach-options.exports .coach-opt .ex { grid-row: auto; transform: scale(.8); margin: -4px 0; }
+  .slide { margin: 0; }
+  .coach-seg { grid-template-columns: 52px minmax(0, 1fr); align-items: center; gap: 8px; }
+  .coach-seg-row button { min-height: 30px; font-size: 12.5px; padding: 3px 4px; }
+  .coach-stepper { padding: 4px 4px 4px 12px; }
+  .coach-stepper button { width: 34px; min-height: 32px; }
+  .coach-stepper output { font-size: 15px; }
+  .coach-name input { min-height: 38px; font-size: 14px; }
+  .coach-quick button { min-height: 32px; }
+  .coach-preview img { max-height: 150px; }
+  .coach.folded { padding: 8px 12px; }
+  .coach.folded .coach-how { display: none; }
+
+  /* 캔버스 위 도구는 한 줄로 */
+  .canvas-navigation { flex-wrap: nowrap; gap: 4px; padding: 5px 6px; overflow-x: auto; scrollbar-width: none; }
+  .canvas-navigation button { min-height: 32px; min-width: 32px; padding: 4px 9px; font-size: 12.5px; }
+  .canvas-navigation output { min-width: 40px; font-size: 11.5px; }
+  .canvas-navigation #undo { padding: 4px 7px; }
+  .zoom-fit-controls { flex-basis: auto; display: flex; margin-left: auto; }
+  #zoomFitWidth, #zoomFitHeight, .editorfoot { display: none !important; }
+  #viewport, body[data-mobile-step='1'] #viewport { padding: 14px; }
+  .canvas-rotation, .correction-panel { padding: 6px; }
+  .correction-buttons button { min-height: 32px; font-size: 12.5px; }
+
+  /* 쉬운 보기: 한 화면에 캔버스 + 질문 카드 + 아래 막대 */
+  body.has-image.simple:not(.coach-folded) { height: 100svh; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 0; }
+  body.has-image.simple:not(.coach-folded) .top { flex: none; }
+  body.has-image.simple:not(.coach-folded) main { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; padding: 8px 8px 0; }
+  body.has-image.simple:not(.coach-folded) .layout { order: 1; flex: 1; min-height: 0; display: flex; }
+  body.has-image.simple:not(.coach-folded) .coach { order: 2; flex: none; max-height: 52svh; overflow-y: auto; overscroll-behavior: contain; margin: 8px 0; }
+  body.has-image.simple:not(.coach-folded) aside,
+  body.has-image.simple:not(.coach-folded) footer,
+  body.has-image.simple:not(.coach-folded) .toolbar,
+  body.has-image.simple:not(.coach-folded) .file-save-browser-hint:not(.file-save-entry-hint) { display: none !important; }
+  body.has-image.simple:not(.coach-folded) .workspace { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  body.has-image.simple:not(.coach-folded) .editor { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  body.has-image.simple:not(.coach-folded) #viewport { flex: 1; height: auto !important; min-height: 120px; }
+  body.has-image.simple:not(.coach-folded) .previewhead { flex: none; margin-bottom: 6px; }
+  body.has-image.simple:not(.coach-folded) .previewhead h2 { font-size: 15px; }
+  body.has-image.simple:not(.coach-folded) .previewhead p { display: none; }
+  body.has-image.simple:not(.coach-folded) #previews { flex: 1; min-height: 0; max-height: none; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
+  body.has-image.simple:not(.coach-folded) .thumb { padding: 4px; border-radius: 9px; }
+  body.has-image.simple:not(.coach-folded) .thumb small, body.has-image.simple:not(.coach-folded) .thumb-save { display: none; }
+  body.has-image.simple:not(.coach-folded) .thumb em { top: 7px; left: 7px; }
+  body.has-image.simple:not(.coach-folded) .phone-bar { position: static; flex: none; }
+  body.simple:not(.coach-folded):not(.coach-correct) .canvas-rotation,
+  body.simple:not(.coach-folded):not(.coach-correct) .correction-panel { display: none; }
+}

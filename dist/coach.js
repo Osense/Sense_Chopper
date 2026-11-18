@@ -13,7 +13,7 @@
   coach.innerHTML = `
     <div class="coach-anim" data-howto data-howto-step="1" aria-hidden="true"></div>
     <div class="coach-body">
-      <div class="coach-top"><span class="coach-kicker"></span><button type="button" class="coach-fold ghost">접기</button></div>
+      <div class="coach-top"><span class="coach-kicker"></span><button type="button" class="coach-how ghost" aria-expanded="false">어떻게 하나요?</button><button type="button" class="coach-fold ghost">접기</button></div>
       <h3 class="coach-q" tabindex="-1"></h3>
       <p class="coach-tip"></p>
       <div class="coach-extra"></div>
@@ -26,7 +26,14 @@
   const extra = coach.querySelector(".coach-extra");
   const actions = coach.querySelector(".coach-actions");
   const foldBtn = coach.querySelector(".coach-fold");
+  const howBtn = coach.querySelector(".coach-how");
   Howto.mount(anim);
+  // 휴대폰에서는 애니메이션을 접어 두고 '어떻게 하나요?'로 펼침
+  howBtn.onclick = () => {
+    const open = coach.classList.toggle("show-anim");
+    howBtn.textContent = open ? "그림 닫기" : "어떻게 하나요?";
+    howBtn.setAttribute("aria-expanded", String(open));
+  };
 
   const STEP_NAMES = ["불러오기 · 보정", "선 맞추기", "영역 정하기", "내보내기"];
   const goNext = () => $("mobileNext").click();

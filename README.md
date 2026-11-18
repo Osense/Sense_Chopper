@@ -60,6 +60,7 @@ npm test      # 회귀검사
 | `dist/autoalign.js` | 가이드 선 자동 맞춤 (바탕색과 다른 부분의 분포를 보고 그림 덩어리 가운데로) |
 | `dist/export.js` | GIF · PPT 만들기 |
 | `dist/vendor/` | gifenc(GIF, MIT) · PptxGenJS(PPT, MIT) — 필요할 때만 불러옴 |
+| `dist/phone.js` | 휴대폰 세로: 아래 막대(이전 · 단계 진행 · 다음), 되돌리기를 화면 이동 줄로 |
 | `dist/landing.js` | 첫 화면 활용 사례 배경 · 카드, 예시 학습지 생성, 화면 전체 끌어 놓기 |
 | `dist/brand/wsns-mark.svg` | WSNS 정사각형 로고 (WesNS 레포 `public/brand`와 같은 파일) |
 | `dist/fonts/` | Pretendard · JetBrains Mono (OFL) |
@@ -70,6 +71,8 @@ npm test      # 회귀검사
 `main`에 푸시하면 `.github/workflows/pages.yml`이 검사를 통과한 뒤 `dist`를 GitHub Pages에 배포합니다. 레포 **Settings → Pages → Source: GitHub Actions**가 켜져 있어야 합니다.
 
 ## 버전
+
+0.4.1 — 휴대폰 세로 화면을 한 화면 앱으로: 캔버스 · 질문 카드 · 아래 막대, 버튼 · 글자 크기 정리
 
 0.4.0 — 질문형 마법사(영역 모양 · 크기 질문, 내보내기 선택), 선 자동 맞춤, GIF · PPT 내보내기, 세부 설정 숨김
 
