@@ -1,7 +1,8 @@
 // 휴대폰 세로 화면 전용 배치:
 //  - 아래쪽 막대 하나에 [이전] [단계 진행 표시] [다음]을 모읍니다 (단계 탭 · 제목 줄 대신)
 //  - 되돌리기 버튼을 화면 이동 · 확대 줄로 옮겨 캔버스 위 도구 줄을 한 줄로 줄입니다
-// 휴대폰이 아니면 원래 자리로 돌려 둡니다. 버튼을 옮겨도 동작은 그대로입니다.
+// 넓은 화면에서는 이전 · 다음을 안내 막대 오른쪽에, 화면 이동 · 확대 줄을 캔버스 도구 줄 안에 넣어 한 줄로 만듭니다.
+// 버튼을 옮겨도 동작은 그대로입니다.
 (() => {
   const phone = matchMedia("(max-width: 720px)");
   const prev = $("mobilePrevious"), next = $("mobileNext"), undo = $("undo");
@@ -31,15 +32,19 @@
   new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ["data-mobile-step"] });
 
   function place() {
+    const coachNav = document.querySelector(".coach-nav");
+    const toolbar = document.querySelector(".toolbar");
     if (phone.matches) {
       bar.prepend(prev);
       bar.append(next);
       if (!bar.isConnected) document.body.append(bar);
       if (nav && undo) nav.prepend(undo);
+      if (nav) $("viewport").before(nav);
     } else {
-      stepActions?.append(prev, next);
+      (coachNav || stepActions)?.append(prev, next);
       bar.remove();
       if (tools && undo) tools.prepend(undo);
+      if (nav && toolbar) toolbar.firstElementChild.after(nav);
     }
     sync();
   }

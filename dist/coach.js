@@ -3,7 +3,9 @@
 //   2 선 맞추기         가로 · 세로 몇 개인가요? → 선이 가운데를 지나나요?
 //   3 영역 정하기       자를 영역은 어떤 모습인가요? → 영역 크기를 맞춰 주세요
 //   4 내보내기          총 N장이 나왔어요. 이걸 어떻게 할까요? → 낱장 저장 · GIF · PPT
-// 그 단계 장면만 반복하는 작은 애니메이션이 함께 나옵니다. 세부 설정 패널은 기본으로 숨기고 버튼으로 엽니다.
+// 넓은 화면: 작업 공간 맨 위 '안내 막대' — 왼쪽 질문, 아래 줄 대답 도구 · 버튼, 오른쪽 이전 · 다음.
+//            옆 패널에는 그 단계의 실제 설정이 늘 보입니다. 단계 애니메이션은 '사용법 보기'로 펼칩니다.
+// 휴대폰: 캔버스 아래 질문 카드 (세부 설정은 기본으로 숨기고 버튼으로 엽니다).
 (() => {
   const FOLD_KEY = "sense-chopper:coach-folded";
   const DETAIL_KEY = "sense-chopper:details-open";
@@ -12,13 +14,12 @@
   coach.setAttribute("aria-label", "단계별 안내");
   coach.innerHTML = `
     <div class="coach-anim" data-howto data-howto-step="1" aria-hidden="true"></div>
-    <div class="coach-body">
-      <div class="coach-top"><span class="coach-kicker"></span><button type="button" class="coach-how ghost" aria-expanded="false">어떻게 하나요?</button><button type="button" class="coach-fold ghost">접기</button></div>
-      <h3 class="coach-q" tabindex="-1"></h3>
-      <p class="coach-tip"></p>
-      <div class="coach-extra"></div>
-      <div class="coach-actions"></div>
-    </div>`;
+    <div class="coach-head">
+      <div class="coach-text"><span class="coach-kicker"></span><h3 class="coach-q" tabindex="-1"></h3><p class="coach-tip"></p></div>
+      <div class="coach-tools"><button type="button" class="coach-how ghost" aria-expanded="false">사용법 보기</button><button type="button" class="coach-fold ghost">접기</button></div>
+      <div class="coach-nav"></div>
+    </div>
+    <div class="coach-row"><div class="coach-extra"></div><div class="coach-actions"></div></div>`;
   const anim = coach.querySelector(".coach-anim");
   const kicker = coach.querySelector(".coach-kicker");
   const q = coach.querySelector(".coach-q");
@@ -28,10 +29,10 @@
   const foldBtn = coach.querySelector(".coach-fold");
   const howBtn = coach.querySelector(".coach-how");
   Howto.mount(anim);
-  // 휴대폰에서는 애니메이션을 접어 두고 '어떻게 하나요?'로 펼침
+  // 단계 애니메이션은 접어 두고 '사용법 보기'로 펼침 (넓은 화면은 안내 막대 아래 작은 창)
   howBtn.onclick = () => {
     const open = coach.classList.toggle("show-anim");
-    howBtn.textContent = open ? "그림 닫기" : "어떻게 하나요?";
+    howBtn.textContent = open ? "그림 닫기" : "사용법 보기";
     howBtn.setAttribute("aria-expanded", String(open));
   };
 
@@ -342,6 +343,7 @@
     }
     document.body.classList.toggle("coach-correct", key === "s1b");
     if (key === "s1b" && $("straightenOne")?.getAttribute("aria-pressed") !== "true") $("straightenOne")?.click();
+    coach.classList.toggle("no-row", !st.actions.length && !extra.childElementCount);
     if (focus && !coach.classList.contains("folded")) q.focus({ preventScroll: true });
   }
 
@@ -403,15 +405,11 @@
 
   // 넓은 화면은 옆 패널 맨 위, 휴대폰은 캔버스 위
   const phone = matchMedia("(max-width: 720px)");
+  // 안내는 어느 화면에서나 작업 공간 위(휴대폰은 CSS로 캔버스 아래로), 세부 설정 버튼은 휴대폰만
   function place() {
-    const aside = document.querySelector("aside");
-    if (phone.matches) {
-      document.querySelector(".layout").before(coach);
-      aside.prepend(detailBtn);
-    } else {
-      aside.prepend(coach);
-      coach.after(detailBtn);
-    }
+    document.querySelector(".layout").before(coach);
+    if (phone.matches) document.querySelector("aside").prepend(detailBtn);
+    else detailBtn.remove();
   }
   place();
   phone.addEventListener("change", place);
