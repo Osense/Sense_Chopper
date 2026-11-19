@@ -113,44 +113,8 @@
       (u) => `<li class="usecase"><div class="usecase-art">${art(u.art)}</div><div><span class="usecase-stat">${u.stat}</span><h3>${u.title}</h3><p>${u.body}</p></div></li>`,
     ).join("");
 
-  // 3) 예시 학습지 만들어서 바로 체험
-  function sampleSheet() {
-    const W = 1200, H = 1560, cv = document.createElement("canvas");
-    cv.width = W; cv.height = H;
-    const g = cv.getContext("2d");
-    g.fillStyle = "#e9e7e1"; g.fillRect(0, 0, W, H);
-    g.save();
-    g.translate(W / 2, H / 2); g.rotate((-1.4 * Math.PI) / 180); g.translate(-W / 2, -H / 2);
-    g.fillStyle = "#fff"; g.shadowColor = "rgba(0,0,0,.18)"; g.shadowBlur = 24; g.fillRect(70, 60, W - 140, H - 120); g.shadowBlur = 0;
-    g.fillStyle = INK; g.font = "800 46px 'Pretendard Variable', sans-serif"; g.fillText("이모티콘 만들기 학습지", 120, 150);
-    g.font = "500 28px 'Pretendard Variable', sans-serif"; g.fillStyle = "#666"; g.fillText("칸마다 나만의 표정을 그려 보세요.      6학년 ( )반 이름: ____________", 120, 200);
-    const cols = 3, rows = 4, cw = 300, ch = 300, gx = 45, gy = 30, x0 = 135, y0 = 250;
-    const mouths = ["smile", "o", "wink", "grin", "flat", "smile"];
-    for (let r = 0; r < rows; r++)
-      for (let c = 0; c < cols; c++) {
-        const i = r * cols + c, x = x0 + c * (cw + gx), y = y0 + r * (ch + gy), cx = x + cw / 2, cy = y + ch / 2;
-        g.strokeStyle = "#b9bcc8"; g.lineWidth = 3; g.setLineDash([12, 10]); g.strokeRect(x, y, cw, ch); g.setLineDash([]);
-        g.fillStyle = C[i % 6]; g.strokeStyle = INK; g.lineWidth = 6;
-        g.beginPath(); g.arc(cx + ((i * 7) % 11) - 5, cy + 8, 96, 0, Math.PI * 2); g.fill(); g.stroke();
-        g.fillStyle = INK;
-        const m = mouths[i % 6];
-        g.beginPath(); g.arc(cx - 34, cy - 14, 11, 0, 7); g.fill();
-        if (m === "wink") { g.beginPath(); g.moveTo(cx + 22, cy - 14); g.lineTo(cx + 48, cy - 14); g.stroke(); }
-        else { g.beginPath(); g.arc(cx + 34, cy - 14, 11, 0, 7); g.fill(); }
-        g.beginPath();
-        if (m === "o") { g.arc(cx, cy + 40, 16, 0, 7); g.stroke(); }
-        else if (m === "flat") { g.moveTo(cx - 30, cy + 44); g.lineTo(cx + 30, cy + 44); g.stroke(); }
-        else if (m === "grin") { g.moveTo(cx - 44, cy + 26); g.lineTo(cx + 44, cy + 26); g.quadraticCurveTo(cx, cy + 90, cx - 44, cy + 26); g.fillStyle = "#fff"; g.fill(); g.stroke(); }
-        else { g.moveTo(cx - 42, cy + 28); g.quadraticCurveTo(cx, cy + 74, cx + 42, cy + 28); g.stroke(); }
-        g.fillStyle = "#999"; g.font = "500 24px 'Pretendard Variable', sans-serif"; g.fillText(String(i + 1), x + 12, y + 32);
-      }
-    g.restore();
-    return new Promise((res) => cv.toBlob((b) => res(new File([b], "예시_이모티콘_학습지.png", { type: "image/png" })), "image/png"));
-  }
-  $("trySample").onclick = async () => {
-    const file = await sampleSheet();
-    load(file);
-  };
+  // 3) 예시 체험: 인식 표시가 있는 학습지를 비스듬히 찍은 사진 → 자동 보정까지 바로 보여 줌
+  $("trySample").onclick = async () => load(await Sheet.samplePhoto());
 
   // 4) 첫 화면 어디에 끌어 놓아도 불러오기
   let depth = 0;

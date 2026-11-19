@@ -64,6 +64,20 @@
       </div>
       <ul class="usecase-grid" id="usecaseGrid"></ul>
     </div>
+    <div class="sheet-promo">
+      <div class="sheet-thumb" data-sheet-thumb></div>
+      <div class="sheet-copy">
+        <p class="eyebrow">인쇄용 학습지 견본</p>
+        <h2>이모티콘 만들기 학습지</h2>
+        <p>네 모서리에 인식 표시가 있는 학습지예요. 다 그린 학습지를 휴대폰으로 비스듬히 찍어도, 쎈스 초퍼가 표시를 찾아 <b>자동으로 반듯하게 펴고 12칸을 바로 잡아</b> 줘요. 선 맞추기 없이 곧바로 저장하면 끝.</p>
+        <ol class="sheet-steps"><li>인쇄해서 칸마다 표정 그리기</li><li>네 모서리가 다 보이게 사진 찍기</li><li>불러오면 자동 보정 · 12장 저장</li></ol>
+        <div class="sheet-actions">
+          <button type="button" class="primary" data-sheet-pdf>학습지 받기 (PDF)</button>
+          <button type="button" data-sheet-png>PNG로 받기</button>
+          <button type="button" class="ghost" data-sheet-try>다 그린 예시 사진으로 해 보기</button>
+        </div>
+      </div>
+    </div>
     <div class="drop-veil" aria-hidden="true"><svg class="icon"><use href="#i-upload"/></svg><b>여기에 놓으면 바로 불러와요</b></div>
   </section>
 
@@ -80,6 +94,7 @@
         </label>
         <div id="info">아직 불러온 이미지가 없어요</div>
         <p class="privacy"><svg class="icon"><use href="#i-lock"/></svg>이미지는 서버로 보내지 않고 이 기기 안에서만 처리돼요.</p>
+        <p class="sheet-link">자동 인식 학습지 견본 <button type="button" class="linkish" data-sheet-pdf>PDF</button> · <button type="button" class="linkish" data-sheet-png>PNG</button></p>
       </div>
 
       <div class="section">
@@ -224,6 +239,7 @@
 <script src="export.js"></script>
 <script src="poster.js"></script>
 <script src="coach.js"></script>
+<script src="sheet.js"></script>
 <script src="phone.js"></script>
 <script src="landing.js"></script>
 </body>

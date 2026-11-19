@@ -502,4 +502,16 @@
 
   lastStep = Number(document.body.dataset.mobileStep) || 1;
   show(img ? stateForStep(lastStep) : "s0", undefined, false);
+
+  // 다른 모듈(학습지 자동 인식 등)이 질문을 더하고 띄울 수 있게
+  window.Coach = {
+    show: (key, arg) => show(key, arg),
+    register: (key, fn) => { STATES[key] = fn; },
+    goStep: (n) => {
+      const b = document.querySelectorAll("#stepNav button")[n - 1];
+      if (b) b.click();
+      else show(stateForStep(n));
+    },
+    h,
+  };
 })();

@@ -488,6 +488,6 @@ const Poster = (() => {
   return {
     state, set, layout, summary, quality, pdf, savePdf, stepNames: () => (state.on ? POSTER_TABS : CHOP_TABS),
     onChange: (fn) => listeners.add(fn),
-    PAPERS, PAPER_NAMES,
+    PAPERS, PAPER_NAMES, toJpeg, buildPdf,
   };
 })();
