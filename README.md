@@ -3,7 +3,7 @@
 WSNS studio [웨스엔에스 스튜디오]의 웹앱입니다. 학습지나 스캔한 종이 한 장에 그린 여러 그림을 격자에 맞춰 칸마다 잘라 내고, 이름을 붙여 한 번에 저장합니다. 이미지 처리는 모두 브라우저 안에서 하며 서버 · 데이터베이스 · API 키가 없습니다. 무료입니다.
 
 - 서비스 주소: https://osense.github.io/Sense_Chopper/
-- 제품 소개: https://osense.github.io/WesNS/products/sense-chopper/
+- 제품 소개: https://wes-ns.vercel.app/products/sense-chopper/
 
 ## 자동 인식 학습지
 
