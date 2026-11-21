@@ -1156,3 +1156,11 @@ body.at-home .resume-bar { position: sticky; top: 8px; z-index: 30; display: fle
 .pdf-text { flex: 1; min-width: 0; color: var(--text); }
 .pdf-bar .pdf-run { flex: none; min-height: 30px; padding: 5px 12px; }
 @media (max-width: 720px) { .pdf-text { font-size: 11.5px; } }
+
+/* 여러 쪽 PDF 미리보기: 쪽 제목 */
+#previews .preview-page { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 8px; margin: 6px 0 -4px; padding-top: 8px; border-top: 1px solid var(--divider); font-size: 12.5px; }
+#previews .preview-page:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+#previews .preview-page b { font-weight: 800; color: var(--text); }
+#previews .preview-page span { color: var(--muted); font-size: 11.5px; font-weight: 600; }
+#previews .pb-thumb { cursor: default; }
+#previews .pb-thumb img { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 8px; background: repeating-conic-gradient(var(--check) 0% 25%, #fff 0% 50%) 0/12px 12px; }

@@ -15,11 +15,11 @@ const PdfBatch = (() => {
   }
   const isPdf = (f) => !!f && (f.type === "application/pdf" || /\.pdf$/i.test(f.name || ""));
 
-  async function renderPage(n) {
+  async function renderPage(n, dpi = DPI) {
     const page = await doc.getPage(n);
-    let vp = page.getViewport({ scale: DPI / 72 });
+    let vp = page.getViewport({ scale: dpi / 72 });
     const big = Math.max(vp.width, vp.height);
-    if (big > 4200) vp = page.getViewport({ scale: (DPI / 72) * (4200 / big) });
+    if (big > 4200) vp = page.getViewport({ scale: (dpi / 72) * (4200 / big) });
     const cv = document.createElement("canvas");
     cv.width = Math.round(vp.width);
     cv.height = Math.round(vp.height);
@@ -63,6 +63,7 @@ const PdfBatch = (() => {
     return r;
   };
   function close() {
+    resetPreview();
     try { doc?.destroy(); } catch {}
     doc = null;
     info = null;
@@ -95,6 +96,181 @@ const PdfBatch = (() => {
   document.body.append(prog);
   const P = (s) => prog.querySelector(s);
 
+  // ---------- 한 쪽 처리 (미리보기 · 저장 공용) ----------
+  // 1) 비동기 준비: 쪽을 그리고, 학습지면 표시를 찾아 펴 둠 (편집 상태는 건드리지 않음)
+  async function prepare(p, dpi) {
+    const cv = await renderPage(p, dpi);
+    let found = null;
+    try { found = Sheet.detect(cv); } catch {}
+    if (found) {
+      const { canvas, ppm } = await Sheet.rectify(cv, found);
+      const T = Sheet.readTemplate(canvas, ppm);
+      if (T) { cv.width = cv.height = 0; return { kind: "sheet", canvas, ppm, T }; }
+      canvas.width = canvas.height = 0;
+    }
+    return { kind: "raw", cv };
+  }
+  const STATE_INPUTS = ["cw", "ch", "gw", "gh", "ratio", "cropMode"];
+  function saveState() {
+    return {
+      rotationOriginal, rotationAngle, selected, cropMode, guideAutoSize,
+      boxes: boxes.map((b) => ({ ...b })), vertical: vertical.slice(), horizontal: horizontal.slice(), freeFrames: freeFrames.map((f) => ({ ...f })),
+      inputs: Object.fromEntries(STATE_INPUTS.map((id) => [id, $(id).value])),
+      ranges: ["gw", "gh"].map((id) => $(id).max), labels: ["gwValue", "ghValue"].map((id) => $(id).textContent),
+      auto: $("guideAutoSize").checked,
+    };
+  }
+  function restoreState(k) {
+    rotationOriginal = k.rotationOriginal; rotationAngle = k.rotationAngle;
+    paintRotation();
+    boxes = k.boxes; vertical = k.vertical; horizontal = k.horizontal; freeFrames = k.freeFrames;
+    cropMode = k.cropMode; guideAutoSize = k.guideAutoSize; selected = k.selected;
+    for (const [id, v] of Object.entries(k.inputs)) $(id).value = v;
+    ["gw", "gh"].forEach((id, i) => ($(id).max = k.ranges[i]));
+    ["gwValue", "ghValue"].forEach((id, i) => ($(id).textContent = k.labels[i]));
+    $("guideAutoSize").checked = k.auto;
+    rebuildPositions();
+  }
+  // 2) 동기 처리: 잠깐 그 쪽을 편집 상태에 올려 같은 방식으로 자르고 곧바로 되돌림
+  //    (중간에 화면이 다시 그려지지 않도록 한 번에 처리)
+  function cutPrepared(prep, sizeFor) {
+    const keep = saveState();
+    const raw = correctionSources.get(0) || keep.rotationOriginal;
+    const sheetMode = typeof Sheet !== "undefined" && Sheet.active();
+    try {
+      if (prep.kind === "sheet") {
+        rotationOriginal = prep.canvas;
+        rotationAngle = 0;
+        paintRotation();
+        Sheet.placeCells(prep.T, prep.ppm);
+      } else if (!sheetMode) {
+        const cv = prep.cv;
+        rotationOriginal = cv;
+        rotationAngle = keep.rotationAngle;
+        paintRotation();
+        const sx = cv.width / raw.width, sy = cv.height / raw.height;
+        boxes = keep.boxes.map((b) => ({ ...b, x: b.x * sx, y: b.y * sy, w: b.w * sx, h: b.h * sy }));
+      } else return null; // 학습지 묶음인데 이 쪽에서 표시를 못 찾음
+      if (!boxes.length) return null;
+      return boxes.map((b) => {
+        const full = getOutputSize(b);
+        const { w, h } = sizeFor(full, b);
+        return { canvas: crop(b, Math.max(1, Math.round(w)), Math.max(1, Math.round(h))), w: full.w, h: full.h };
+      });
+    } finally {
+      restoreState(keep);
+    }
+  }
+  const free = (prep) => { for (const c of [prep.canvas, prep.cv]) if (c) c.width = c.height = 0; };
+
+  // ---------- 미리보기: 2쪽부터도 잘린 그림을 쪽별로 보여 줌 ----------
+  const PREVIEW_DPI = 110;
+  let pv = { sig: "", pages: new Map(), job: 0, timer: 0, total: null };
+  const signature = () => JSON.stringify([
+    info?.name, info?.pages, correctionSourceId, rotationAngle, typeof Sheet !== "undefined" && Sheet.active(),
+    boxes.map((b) => [Math.round(b.x), Math.round(b.y), Math.round(b.w), Math.round(b.h)]),
+    ["format", "bg", "outputMode", "fit", "ow", "oh", "scale", "prefix", "start"].map((id) => $(id)?.value ?? ""), $("outputLinked")?.checked,
+  ]);
+  function resetPreview() {
+    pv.job++;
+    clearTimeout(pv.timer);
+    pv = { sig: "", pages: new Map(), job: pv.job, timer: 0, total: null };
+  }
+  function schedulePreview() {
+    if (!info || !doc) return;
+    const sig = signature();
+    if (sig === pv.sig) return;
+    pv.sig = sig;
+    pv.pages = new Map();
+    pv.total = null;
+    const job = ++pv.job;
+    clearTimeout(pv.timer);
+    pv.timer = setTimeout(async () => {
+      for (let p = 2; p <= info.pages; p++) {
+        if (job !== pv.job) return;
+        let entry;
+        try {
+          const prep = await prepare(p, PREVIEW_DPI);
+          if (job !== pv.job) return free(prep);
+          const cut = cutPrepared(prep, ({ w, h }) => { const f = Math.min(160 / w, 160 / h); return { w: w * f, h: h * f }; });
+          free(prep);
+          entry = cut
+            ? { kind: prep.kind, title: prep.T?.title, thumbs: cut.map((c) => {
+                const u = c.canvas.toDataURL("image/png");
+                c.canvas.width = c.canvas.height = 0;
+                // 미리보기는 낮은 해상도로 그리므로, 저장될 크기로 환산해 보여 줌
+                const k = DPI / PREVIEW_DPI;
+                return { url: u, w: Math.round(c.w * k), h: Math.round(c.h * k) };
+              }) }
+            : { kind: "review" };
+        } catch (e) {
+          console.warn(e);
+          entry = { kind: "review" };
+        }
+        if (job !== pv.job) return;
+        pv.pages.set(p, entry);
+        drawBatchPreviews();
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      pv.total = boxes.length + [...pv.pages.values()].reduce((n, e) => n + (e.thumbs?.length || 0), 0);
+      drawBatchPreviews();
+      // 내보내기 질문에 전체 장 수를 바로 반영
+      if (document.body.dataset.coach === "s4") Coach.show("s4");
+    }, 500);
+  }
+  const pageHead = (text, sub) => {
+    const el = document.createElement("div");
+    el.className = "preview-page pb-node";
+    el.innerHTML = `<b>${text}</b>${sub ? `<span>${sub}</span>` : ""}`;
+    return el;
+  };
+  function drawBatchPreviews() {
+    const box = $("previews");
+    if (!box) return;
+    box.querySelectorAll(".pb-node").forEach((n) => n.remove());
+    if (!info || !boxes.length) return;
+    if (pv.total != null && $("pc")) $("pc").textContent = String(pv.total);
+    const total = pv.total != null ? ` · 모두 ${pv.total}장` : "";
+    box.prepend(pageHead("1쪽", `${boxes.length}장 · 편집 중${total}`));
+    const width = Math.max(2, String(info.pages).length);
+    for (let p = 2; p <= info.pages; p++) {
+      const e = pv.pages.get(p);
+      if (!e) {
+        box.append(pageHead(`${p}쪽`, "준비하는 중…"));
+        // 준비 안 된 쪽은 한 줄만 보이고, 나머지는 몇 쪽 남았는지로
+        const left = info.pages - p;
+        if (left > 0) box.append(pageHead(`${p + 1}~${info.pages}쪽`, `${left}쪽 차례로 준비할게요`));
+        break;
+      }
+      if (e.kind === "review") {
+        box.append(pageHead(`${p}쪽`, "학습지 표시를 못 찾았어요 · 저장할 때 ‘확인 필요’에 통째로 담겨요"));
+        continue;
+      }
+      box.append(pageHead(`${p}쪽`, `${e.thumbs.length}장${e.title ? ` · ${e.title}` : ""}`));
+      e.thumbs.forEach((t, i) => {
+        const el = document.createElement("div");
+        el.className = "thumb pb-node pb-thumb";
+        const name = `${String(p).padStart(width, "0")}쪽/` + filename(i);
+        el.title = `${name} · ${t.w} × ${t.h} px`;
+        el.innerHTML = `<img alt="" src="${t.url}"><em>${p}-${String(i + 1).padStart(2, "0")}</em><small>${name.replace(/\.[^.]+$/, "")} · ${t.w} × ${t.h} px</small>`;
+        box.append(el);
+      });
+    }
+  }
+  // 화면을 다시 그릴 때마다 '잘라 낸 그림' 수를 PDF 전체 장 수로
+  const renderBeforeBatch = render;
+  render = function (...args) {
+    const r = renderBeforeBatch.apply(this, args);
+    if (info && pv.total != null && boxes.length && $("pc")) $("pc").textContent = String(pv.total);
+    return r;
+  };
+  const previewsBeforeBatch = previews;
+  previews = function (...args) {
+    const r = previewsBeforeBatch.apply(this, args);
+    if (info) { drawBatchPreviews(); schedulePreview(); }
+    return r;
+  };
+
   // ---------- 모든 쪽 자르기 ----------
   const pad = (n, len) => String(n).padStart(len, "0");
   async function cutAll(say) {
@@ -119,70 +295,30 @@ const PdfBatch = (() => {
     };
     try { prog.showModal(); } catch { prog.setAttribute("open", ""); }
     show(0, info.pages, "준비하는 중…");
-
-    // 편집 중인 상태를 보관했다가 끝나면 그대로 되돌려요
-    const keep = {
-      rotationOriginal, rotationAngle,
-      boxes: boxes.map((b) => ({ ...b })), vertical: vertical.slice(), horizontal: horizontal.slice(),
-      freeFrames: freeFrames.map((f) => ({ ...f })), cropMode, guideAutoSize, selected,
-      inputs: Object.fromEntries(["cw", "ch", "gw", "gh", "ratio", "cropMode"].map((id) => [id, $(id).value])),
-      ranges: ["gw", "gh"].map((id) => $(id).max), labels: ["gwValue", "ghValue"].map((id) => $(id).textContent),
-      auto: $("guideAutoSize").checked,
-    };
-    const raw = correctionSources.get(0) || rotationOriginal;
     const sheetMode = typeof Sheet !== "undefined" && Sheet.active();
-    const manualWarp = !sheetMode && correctionSourceId !== 0;
-    const files = [];
-    const review = [];
+    const files = [], review = [];
     let pieces = 0;
-    const width = String(info.pages).length < 2 ? 2 : String(info.pages).length;
+    const width = Math.max(2, String(info.pages).length);
     try {
       for (let p = 1; p <= info.pages; p++) {
         if (ctrl.signal.aborted) throw Object.assign(Error("취소"), { name: "AbortError" });
-        const cv = await renderPage(p);
-        let ok = false, label = "";
-        // 1) 쎈스 초퍼 학습지면 그 쪽의 표시로 다시 펴고 칸을 잡음
-        let found = null;
-        try { found = Sheet.detect(cv); } catch {}
-        if (found) {
-          const { canvas, ppm } = await Sheet.rectify(cv, found);
-          const T = Sheet.readTemplate(canvas, ppm);
-          if (T) {
-            rotationOriginal = canvas;
-            rotationAngle = 0;
-            paintRotation();
-            Sheet.placeCells(T, ppm);
-            ok = true;
-            label = T.title;
-          }
-        }
-        // 2) 일반 문서: 1쪽에서 정한 영역을 같은 자리에 (쪽 크기가 다르면 비율대로)
-        if (!ok && !sheetMode) {
-          rotationOriginal = cv;
-          rotationAngle = keep.rotationAngle;
-          paintRotation();
-          const sx = cv.width / raw.width, sy = cv.height / raw.height;
-          boxes = keep.boxes.map((b) => ({ ...b, x: b.x * sx, y: b.y * sy, w: b.w * sx, h: b.h * sy }));
-          ok = boxes.length > 0;
-        }
+        const prep = await prepare(p, DPI);
+        const cut = cutPrepared(prep, (s) => s);
         const folder = `${pad(p, width)}쪽`;
-        if (!ok) {
-          // 학습지 표시를 못 찾은 쪽은 통째로 '확인 필요'에 담아 둬요
+        if (!cut) {
           review.push(p);
-          files.push({ name: `확인 필요/${folder}.jpg`, blob: await toBlob(cv) });
+          files.push({ name: `확인 필요/${folder}.jpg`, blob: await toBlob(prep.cv || prep.canvas) });
         } else {
-          for (let i = 0; i < boxes.length; i++) {
-            const { w, h } = getOutputSize(boxes[i]);
-            const c = crop(boxes[i], w, h);
-            const blob = await toBlob(c, "image/" + $("format").value, 0.95);
+          for (let i = 0; i < cut.length; i++) {
+            const blob = await toBlob(cut[i].canvas, "image/" + $("format").value, 0.95);
             const ext = blob.type === "image/png" ? "png" : blob.type === "image/jpeg" ? "jpg" : "webp";
             files.push({ name: `${folder}/` + filename(i).replace(/\.[^.]+$/, "." + ext), blob });
-            c.width = c.height = 1;
+            cut[i].canvas.width = cut[i].canvas.height = 1;
             pieces++;
           }
         }
-        cv.width = cv.height = 0;
-        show(p, info.pages, ok ? `${p}쪽${label ? ` · ${label}` : ""} · ${boxes.length}장` : `${p}쪽 · 학습지 표시를 못 찾아 '확인 필요'에 담았어요`);
+        free(prep);
+        show(p, info.pages, cut ? `${p}쪽${prep.T ? ` · ${prep.T.title}` : ""} · ${cut.length}장` : `${p}쪽 · ${sheetMode ? "학습지 표시를 못 찾아 '확인 필요'에 담았어요" : "자를 영역이 없어요"}`);
         await new Promise((r) => setTimeout(r, 0));
       }
       P(".pp-label").textContent = "ZIP 파일로 묶는 중…";
@@ -191,21 +327,11 @@ const PdfBatch = (() => {
       const blob = await zip(files);
       const prefix = ($("prefix").value.trim() || info.name).replace(/[<>:"/\\|?*\x00-\x1f]/g, "_");
       save(blob, `${prefix}_${info.pages}쪽.zip`);
-      return { pages: info.pages, pieces, review, manualWarp };
+      return { pages: info.pages, pieces, review };
     } catch (e) {
       if (e.name === "AbortError") { say?.("취소했어요."); return null; }
       throw e;
     } finally {
-      rotationOriginal = keep.rotationOriginal;
-      rotationAngle = keep.rotationAngle;
-      paintRotation();
-      boxes = keep.boxes; vertical = keep.vertical; horizontal = keep.horizontal; freeFrames = keep.freeFrames;
-      cropMode = keep.cropMode; guideAutoSize = keep.guideAutoSize; selected = keep.selected;
-      for (const [id, v] of Object.entries(keep.inputs)) $(id).value = v;
-      ["gw", "gh"].forEach((id, i) => ($(id).max = keep.ranges[i]));
-      ["gwValue", "ghValue"].forEach((id, i) => ($(id).textContent = keep.labels[i]));
-      $("guideAutoSize").checked = keep.auto;
-      rebuildPositions();
       render(false);
       prog.close?.();
       prog.removeAttribute("open");
@@ -238,5 +364,5 @@ const PdfBatch = (() => {
     actions: [["다른 방법도 만들기", () => Coach.show("s4"), true]],
   }));
 
-  return { active: () => !!info, pages: () => info?.pages ?? 0, cutAll, isPdf };
+  return { active: () => !!info, pages: () => info?.pages ?? 0, total: () => pv.total, cutAll, isPdf };
 })();

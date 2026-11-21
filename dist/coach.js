@@ -315,7 +315,9 @@
         },
         actions: [["다 맞췄어요, 다음으로", goNext, true], ["모양 다시 고르기", () => show("s3a")]] };
     },
-    s4: () => ({ step: 4, q: `총 ${boxes.length}장의 이미지가 나왔어요. 이제 이걸 어떻게 할까요?`,
+    s4: () => ({ step: 4, q: typeof PdfBatch !== "undefined" && PdfBatch.active()
+        ? (PdfBatch.total() != null ? `PDF ${PdfBatch.pages()}쪽에서 모두 ${PdfBatch.total()}장의 이미지가 나왔어요. 이제 이걸 어떻게 할까요?` : `PDF ${PdfBatch.pages()}쪽을 자르고 있어요. 이제 이걸 어떻게 할까요?`)
+        : `총 ${boxes.length}장의 이미지가 나왔어요. 이제 이걸 어떻게 할까요?`,
       tip: "미리보기에서 잘린 모습을 확인할 수 있어요. 여러 가지로 만들어도 돼요.",
       extra: () => [optionCards([
         { title: "낱장 이미지로 저장", desc: "PNG · JPG를 ZIP 하나로", visual: '<i class="ex ex-img"><em></em><em></em><em></em></i>', pick: () => show("s4img") },
