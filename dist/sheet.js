@@ -560,7 +560,7 @@ const Sheet = (() => {
       selected = 0;
       render();
       previews();
-      lastResult = { exact: found.exact, count: boxes.length, T };
+      lastResult = { exact: found.exact, count: boxes.length, T, sourceId: correctionSourceId };
       toast(T ? `‘${T.title}’ 학습지를 반듯하게 펴고 칸마다 영역을 잡았어요.` : "학습지 표시를 찾아 반듯하게 폈어요.");
       Coach.show("sheet");
       return true;
@@ -679,5 +679,7 @@ const Sheet = (() => {
     else if (tr) busyBtn(tr, async () => load(await samplePhoto()));
   });
 
-  return { renderSheet, detect, samplePhoto, downloadPdf, downloadPng, TEMPLATES, MARK, GRID, PAGE };
+  // 지금 편집 중인 이미지가 학습지 자동 보정 결과인지
+  const active = () => !!(lastResult && lastResult.T && lastResult.sourceId === correctionSourceId);
+  return { renderSheet, detect, rectify, readTemplate, placeCells, active, samplePhoto, downloadPdf, downloadPng, TEMPLATES, MARK, GRID, PAGE };
 })();

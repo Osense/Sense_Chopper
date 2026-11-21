@@ -321,6 +321,7 @@
         { title: "낱장 이미지로 저장", desc: "PNG · JPG를 ZIP 하나로", visual: '<i class="ex ex-img"><em></em><em></em><em></em></i>', pick: () => show("s4img") },
         { title: "움직이는 GIF 만들기", desc: "차례로 넘어가는 애니메이션", visual: '<i class="ex ex-gif"><em></em><em></em><em></em></i>', pick: () => show("s4gif") },
         { title: "발표 자료(PPT) 만들기", desc: "한 장에 하나씩 또는 모아서", visual: '<i class="ex ex-ppt"><em></em></i>', pick: () => show("s4ppt") },
+        ...(typeof PdfBatch !== "undefined" && PdfBatch.active() ? [{ title: `PDF ${PdfBatch.pages()}쪽 모두 자르기`, desc: "쪽마다 폴더로 · ZIP 하나", visual: '<i class="ex ex-img"><em></em><em></em><em></em></i>', pick: () => show("s4pdf") }] : []),
       ], "exports")],
       actions: [] }),
     s4img: () => {
@@ -507,6 +508,10 @@
   window.Coach = {
     show: (key, arg) => show(key, arg),
     register: (key, fn) => { STATES[key] = fn; },
+    nameField: () => nameField(),
+    segmented: (...a) => segmented(...a),
+    status: () => status(),
+    run: (st, work) => run(st, work),
     goStep: (n) => {
       const b = document.querySelectorAll("#stepNav button")[n - 1];
       if (b) b.click();
