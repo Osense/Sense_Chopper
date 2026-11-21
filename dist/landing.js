@@ -22,69 +22,73 @@
         for (let c = 0; c < cols; c++) out += cell(x0 + c * (w + gap), y0 + r * (h + gap), r * cols + c, w, h);
       return out;
     };
-    const cutGrid = (x0, y0, x1, y1, cols, rows) => {
+    // 자르는 선은 칸 배치와 같은 값으로 계산해 언제나 칸 사이 틈 한가운데에 와요
+    const gridCuts = (x0, y0, cols, rows, w, h, gap, pad = 4) => {
+      const W = cols * w + (cols - 1) * gap, H = rows * h + (rows - 1) * gap;
       let s = "";
-      for (let c = 1; c < cols; c++) { const x = x0 + ((x1 - x0) * c) / cols; s += `<line x1="${x}" y1="${y0 - 4}" x2="${x}" y2="${y1 + 4}"/>`; }
-      for (let r = 1; r < rows; r++) { const y = y0 + ((y1 - y0) * r) / rows; s += `<line x1="${x0 - 4}" y1="${y}" x2="${x1 + 4}" y2="${y}"/>`; }
+      for (let c = 1; c < cols; c++) { const x = x0 + c * (w + gap) - gap / 2; s += `<line x1="${x}" y1="${y0 - pad}" x2="${x}" y2="${y0 + H + pad}"/>`; }
+      for (let r = 1; r < rows; r++) { const y = y0 + r * (h + gap) - gap / 2; s += `<line x1="${x0 - pad}" y1="${y}" x2="${x0 + W + pad}" y2="${y}"/>`; }
       return s;
     };
+    // 종이(px, py, pw, ph) 가운데에 격자를 놓을 때의 시작점
+    const center = (px, pw, n, size, gap) => px + (pw - (n * size + (n - 1) * gap)) / 2;
     const faceS = (cx, cy, r, i) =>
       `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${C[i % C.length]}"/><circle cx="${cx - r * 0.35}" cy="${cy - r * 0.2}" r="${r * 0.13}" fill="${INK}"/><circle cx="${cx + r * 0.35}" cy="${cy - r * 0.2}" r="${r * 0.13}" fill="${INK}"/><path d="M${cx - r * 0.45} ${cy + r * 0.2} q${r * 0.45} ${r * 0.5} ${r * 0.9} 0" stroke="${INK}" stroke-width="1.4" fill="none" stroke-linecap="round"/>`;
     switch (kind) {
       case "worksheet":
         body = `<rect x="26" y="10" width="108" height="100" rx="3" class="ua-paper"/><rect x="34" y="17" width="44" height="4" rx="2" fill="#c9cbd6"/>` +
-          grid(34, 27, 4, 3, 21, 23, 2, (x, y, i, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#d3d5df"/>` + (i % 3 === 0 ? `<path d="M${x + 4} ${y + 17} l6 -10 l6 10z" fill="${C[i % 6]}"/>` : i % 3 === 1 ? `<circle cx="${x + w / 2}" cy="${y + h / 2}" r="6" fill="${C[(i + 1) % 6]}"/>` : `<rect x="${x + 5}" y="${y + 6}" width="11" height="11" rx="2" fill="${C[(i + 2) % 6]}"/>`));
-        cuts = cutGrid(34, 27, 125, 100, 4, 3);
+          grid(center(26, 108, 4, 21, 2), 27, 4, 3, 21, 23, 2, (x, y, i, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#d3d5df"/>` + (i % 3 === 0 ? `<path d="M${x + 4} ${y + 17} l6 -10 l6 10z" fill="${C[i % 6]}"/>` : i % 3 === 1 ? `<circle cx="${x + w / 2}" cy="${y + h / 2}" r="6" fill="${C[(i + 1) % 6]}"/>` : `<rect x="${x + 5}" y="${y + 6}" width="11" height="11" rx="2" fill="${C[(i + 2) % 6]}"/>`));
+        cuts = gridCuts(center(26, 108, 4, 21, 2), 27, 4, 3, 21, 23, 2);
         pop = `<rect x="0" y="0" width="21" height="23" class="ua-paper"/><circle cx="10.5" cy="11.5" r="6" fill="${C[2]}"/>`;
         break;
       case "emoji":
-        body = `<rect x="22" y="8" width="116" height="104" rx="3" class="ua-paper"/>` + grid(30, 16, 4, 3, 23, 27, 3, (x, y, i, w, h) => faceS(x + w / 2, y + h / 2, 9, i));
-        cuts = cutGrid(30, 16, 131, 103, 4, 3);
+        body = `<rect x="22" y="8" width="116" height="104" rx="3" class="ua-paper"/>` + grid(center(22, 116, 4, 23, 3), center(8, 104, 3, 27, 3), 4, 3, 23, 27, 3, (x, y, i, w, h) => faceS(x + w / 2, y + h / 2, 9, i));
+        cuts = gridCuts(center(22, 116, 4, 23, 3), center(8, 104, 3, 27, 3), 4, 3, 23, 27, 3);
         pop = `<rect x="0" y="0" width="26" height="28" rx="3" class="ua-paper"/>${faceS(13, 14, 9, 3)}`;
         break;
       case "cardnews":
         body = grid(18, 22, 4, 1, 28, 74, 4, (x, y, i, w, h) =>
           `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="${["#7C5CF0", "#fff", "#fff", "#38BCD8"][i]}" stroke="#d3d5df"/><rect x="${x + 4}" y="${y + 8}" width="${w - 8}" height="5" rx="1.5" fill="${i === 0 || i === 3 ? "#fff" : INK}"/><rect x="${x + 4}" y="${y + 17}" width="${w - 12}" height="3" rx="1.5" fill="${i === 0 || i === 3 ? "#ffffffb0" : "#c9cbd6"}"/><rect x="${x + 4}" y="${y + 40}" width="${w - 8}" height="22" rx="2" fill="${i === 0 || i === 3 ? "#ffffff40" : C[i]}"/>`) +
           `<rect x="146" y="22" width="0" height="0"/>`;
-        cuts = `<line x1="48" y1="16" x2="48" y2="102"/><line x1="80" y1="16" x2="80" y2="102"/><line x1="112" y1="16" x2="112" y2="102"/>`;
+        cuts = gridCuts(18, 22, 4, 1, 28, 74, 4, 6);
         pop = `<rect x="0" y="0" width="28" height="74" rx="2" fill="#38BCD8"/><rect x="4" y="8" width="20" height="5" rx="1.5" fill="#fff"/><rect x="4" y="40" width="20" height="22" rx="2" fill="#ffffff40"/>`;
         break;
       case "sticker":
-        body = `<rect x="22" y="8" width="116" height="104" rx="6" class="ua-paper"/>` + grid(30, 15, 5, 4, 18, 20, 4, (x, y, i, w, h) =>
+        body = `<rect x="22" y="8" width="116" height="104" rx="6" class="ua-paper"/>` + grid(center(22, 116, 5, 18, 4), center(8, 104, 4, 20, 4), 5, 4, 18, 20, 4, (x, y, i, w, h) =>
           i % 2 ? `<rect x="${x}" y="${y + 1}" width="${w}" height="${h - 2}" rx="6" fill="${C[i % 6]}" stroke="#fff" stroke-width="2"/>` : `<circle cx="${x + w / 2}" cy="${y + h / 2}" r="${w / 2}" fill="${C[(i + 3) % 6]}" stroke="#fff" stroke-width="2"/>`);
-        cuts = cutGrid(30, 15, 132, 107, 5, 4);
+        cuts = gridCuts(center(22, 116, 5, 18, 4), center(8, 104, 4, 20, 4), 5, 4, 18, 20, 4);
         pop = `<circle cx="11" cy="11" r="10" fill="${C[4]}" stroke="#fff" stroke-width="2.5"/>`;
         break;
       case "flash":
-        body = `<rect x="22" y="8" width="116" height="104" rx="3" class="ua-paper"/>` + grid(30, 16, 4, 4, 23, 20, 3, (x, y, i, w, h) =>
+        body = `<rect x="22" y="8" width="116" height="104" rx="3" class="ua-paper"/>` + grid(center(22, 116, 4, 23, 3), center(8, 104, 4, 20, 3), 4, 4, 23, 20, 3, (x, y, i, w, h) =>
           `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="none" stroke="#c9cbd6"/><text x="${x + w / 2}" y="${y + h / 2 + 4.5}" text-anchor="middle" font-size="12" font-weight="800" fill="${C[i % 6]}">${"ㄱㄴㄷㄹABCD가나다라1234"[i]}</text>`);
-        cuts = cutGrid(30, 16, 131, 105, 4, 4);
+        cuts = gridCuts(center(22, 116, 4, 23, 3), center(8, 104, 4, 20, 3), 4, 4, 23, 20, 3);
         pop = `<rect x="0" y="0" width="23" height="20" rx="3" class="ua-paper"/><text x="11.5" y="15" text-anchor="middle" font-size="12" font-weight="800" fill="${C[0]}">가</text>`;
         break;
       case "comic":
         body = `<rect x="44" y="6" width="72" height="108" rx="2" class="ua-paper"/>` + grid(50, 12, 1, 4, 60, 22, 3, (x, y, i, w, h) =>
-          `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${INK}" stroke-width="1.3"/><circle cx="${x + 16 + i * 6}" cy="${y + 9}" r="4" fill="none" stroke="${INK}" stroke-width="1.2"/><path d="M${x + 16 + i * 6} ${y + 13} v6" stroke="${INK}" stroke-width="1.2"/><rect x="${x + 34 - i * 4}" y="${y + 3}" width="18" height="7" rx="3.5" fill="none" stroke="${INK}" stroke-width="1"/>`);
-        cuts = `<line x1="40" y1="35.5" x2="120" y2="35.5"/><line x1="40" y1="60.5" x2="120" y2="60.5"/><line x1="40" y1="85.5" x2="120" y2="85.5"/>`;
+          `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${INK}" stroke-width="1.3"/><circle cx="${x + 10 + i * 4}" cy="${y + 9}" r="4" fill="none" stroke="${INK}" stroke-width="1.2"/><path d="M${x + 10 + i * 4} ${y + 13} v6" stroke="${INK}" stroke-width="1.2"/><rect x="${x + 34}" y="${y + 3}" width="18" height="7" rx="3.5" fill="none" stroke="${INK}" stroke-width="1"/>`);
+        cuts = gridCuts(50, 12, 1, 4, 60, 22, 3, 10);
         pop = `<rect x="0" y="0" width="60" height="22" class="ua-paper" stroke="${INK}"/><circle cx="22" cy="9" r="4" fill="none" stroke="${INK}" stroke-width="1.2"/><rect x="34" y="3" width="18" height="7" rx="3.5" fill="none" stroke="${INK}"/>`;
         break;
       case "gallery":
-        body = `<path d="M14 14 L146 6 L150 114 L10 108 Z" fill="#3d6b52"/>` + grid(24, 18, 5, 3, 20, 24, 4, (x, y, i, w, h) =>
+        body = `<path d="M14 14 L146 6 L150 114 L10 108 Z" fill="#3d6b52"/>` + grid(center(10, 140, 5, 20, 4), center(10, 100, 3, 24, 4), 5, 3, 20, 24, 4, (x, y, i, w, h) =>
           `<g transform="rotate(${(i % 3) - 1} ${x + w / 2} ${y + h / 2})"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/><path d="M${x + 3} ${y + h - 5} q${w / 4} -${h / 2} ${w / 2} -2 t${w / 2 - 6} -6" stroke="${C[i % 6]}" stroke-width="2.4" fill="none"/></g><circle cx="${x + w / 2}" cy="${y + 2}" r="1.6" fill="#E0712F"/>`);
-        cuts = cutGrid(24, 18, 140, 100, 5, 3);
+        cuts = gridCuts(center(10, 140, 5, 20, 4), center(10, 100, 3, 24, 4), 5, 3, 20, 24, 4);
         pop = `<rect x="0" y="0" width="20" height="24" fill="#fff"/><path d="M3 19 q5 -12 10 -2 t4 -6" stroke="${C[1]}" stroke-width="2.4" fill="none"/>`;
         break;
       case "poster":
         body = grid(20, 6, 3, 3, 38, 34, 3, (x, y, i, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" class="ua-paper"/><rect x="${x + w - 5}" y="${y}" width="5" height="${h}" fill="#f6e7c8"/>`) +
           `<circle cx="80" cy="60" r="40" fill="${C[3]}" stroke="${INK}" stroke-width="3" opacity=".95"/><circle cx="66" cy="50" r="5" fill="${INK}"/><circle cx="94" cy="50" r="5" fill="${INK}"/><path d="M60 70 q20 20 40 0" stroke="${INK}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`;
-        cuts = `<line x1="58.5" y1="2" x2="58.5" y2="118"/><line x1="99.5" y1="2" x2="99.5" y2="118"/><line x1="16" y1="41.5" x2="144" y2="41.5"/><line x1="16" y1="78.5" x2="144" y2="78.5"/>`;
+        cuts = gridCuts(20, 6, 3, 3, 38, 34, 3);
         pop = `<rect x="0" y="0" width="38" height="34" class="ua-paper"/><path d="M0 30 q14 -18 30 -10 l0 14 h-30z" fill="${C[3]}" stroke="${INK}" stroke-width="2"/>`;
         break;
       case "sprite":
-        body = `<rect x="22" y="14" width="116" height="92" rx="3" fill="#1f1d2b"/>` + grid(28, 20, 6, 4, 15, 18, 3, (x, y, i, w, h) => {
+        body = `<rect x="22" y="14" width="116" height="92" rx="3" fill="#1f1d2b"/>` + grid(center(22, 116, 6, 15, 3), center(14, 92, 4, 18, 3), 6, 4, 15, 18, 3, (x, y, i, w, h) => {
           const col = C[(i >> 1) % 6], f = i % 6;
           return `<rect x="${x + 4}" y="${y + 3}" width="7" height="6" fill="${col}"/><rect x="${x + 3}" y="${y + 9}" width="9" height="5" fill="${col}" opacity=".8"/><rect x="${x + 3 + (f % 2) * 4}" y="${y + 14}" width="3" height="3" fill="${col}"/><rect x="${x + 9 - (f % 2) * 4}" y="${y + 14}" width="3" height="3" fill="${col}"/>`;
         });
-        cuts = cutGrid(28, 20, 133, 107 - 6, 6, 4);
+        cuts = gridCuts(center(22, 116, 6, 15, 3), center(14, 92, 4, 18, 3), 6, 4, 15, 18, 3);
         pop = `<rect x="0" y="0" width="15" height="18" rx="2" fill="#1f1d2b"/><rect x="4" y="3" width="7" height="6" fill="${C[3]}"/><rect x="3" y="9" width="9" height="5" fill="${C[3]}"/>`;
         break;
     }
