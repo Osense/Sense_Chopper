@@ -7,16 +7,114 @@ const Sheet = (() => {
   const PAGE = { w: 210, h: 297 };
   const MOD = 2; // 마커 한 칸 = 2 mm → 파인더 14 mm, 정렬 패턴 10 mm
   const MARK = { tl: { x: 17, y: 17 }, tr: { x: 193, y: 17 }, bl: { x: 17, y: 280 }, br: { x: 193, y: 280 } };
-  const GRID = { cols: 3, rows: 4, cell: 50, gap: 8, x: 22, y: 44, inset: 1.4 };
+  // 학습지 종류 표시: 왼쪽 세로줄의 작은 네모 4개 (맨 위는 늘 검정, 아래 3개가 번호 1~7)
+  const CODE = { x: 17, y0: 134, step: 5, size: 3.2 };
   const INK = "#23232b";
+  const LINE = "#8e93a6";
+  const SOFT = "#c9cdd9";
   const FONT = "'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
 
-  function cellRect(c, r) {
-    return { x: GRID.x + c * (GRID.cell + GRID.gap), y: GRID.y + r * (GRID.cell + GRID.gap), w: GRID.cell, h: GRID.cell };
+  // 칸 배치: 모든 칸 크기가 같은 격자 (안내 선 방식 그대로 쓸 수 있게)
+  const grid = (cols, rows, w, h, gx, gy, y0) => {
+    const x0 = (PAGE.w - (cols * w + (cols - 1) * gx)) / 2;
+    return { cols, rows, w, h, gx, gy, x: x0, y: y0 };
+  };
+  const TEMPLATES = [
+    {
+      id: 1, key: "emoji", file: "이모티콘", title: "이모티콘 만들기",
+      sub: "네모 칸마다 나만의 표정을 하나씩 그려 보세요",
+      blurb: "표정 12개를 그려 낱장 이모티콘으로. 메신저 프로필 · 학급 스티커로 쓰기 좋아요.",
+      meta: "12칸 · 1:1 · 낱장 저장",
+      g: grid(3, 4, 50, 50, 8, 8, 44), ratio: "1", inset: 1.4,
+      after: "s4",
+    },
+    {
+      id: 2, key: "flip", file: "움직이는그림", title: "움직이는 그림",
+      sub: "칸마다 조금씩 움직임을 바꿔 그리면 GIF 애니메이션이 돼요",
+      blurb: "8장면을 조금씩 바꿔 그리면 움직이는 GIF. 걷는 사람, 피어나는 꽃, 튀는 공.",
+      meta: "8칸 · 4:3 · GIF 만들기",
+      g: grid(2, 4, 72, 54, 12, 2.8, 44), ratio: "1.333333", inset: 1.2,
+      after: "s4gif",
+      deco(g, b, i) {
+        // 매 장면 같은 자리에 그리도록 흐린 바닥선과 가운데 표시
+        g.save();
+        g.strokeStyle = SOFT; g.lineWidth = 0.25; g.setLineDash([1, 1.2]);
+        g.beginPath(); g.moveTo(b.x + 4, b.y + b.h * 0.82); g.lineTo(b.x + b.w - 4, b.y + b.h * 0.82); g.stroke();
+        g.setLineDash([]);
+        const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+        g.beginPath(); g.moveTo(cx - 1.6, cy); g.lineTo(cx + 1.6, cy); g.moveTo(cx, cy - 1.6); g.lineTo(cx, cy + 1.6); g.stroke();
+        g.restore();
+      },
+      label: (i) => `${i + 1}`,
+    },
+    {
+      id: 3, key: "comic", file: "네컷만화", title: "네 컷 만화",
+      sub: "처음 · 전개 · 반전 · 마무리, 네 장면으로 이야기를 만들어요",
+      blurb: "네 칸을 잘라 발표 자료(PPT)나 한 장씩 넘기는 GIF로. 국어 · 도덕 수업 정리에.",
+      meta: "4칸 · 4:5 · PPT · GIF",
+      g: grid(2, 2, 80, 100, 8, 8, 52), ratio: "0", inset: 1.2,
+      after: "s4ppt",
+      header(g) {
+        g.fillStyle = INK; g.font = `600 3.6px ${FONT}`; g.textAlign = "left";
+        g.fillText("제목", 25, 47);
+        g.strokeStyle = "#9aa0b4"; g.lineWidth = 0.3;
+        g.beginPath(); g.moveTo(34, 47.8); g.lineTo(185, 47.8); g.stroke();
+      },
+      nameY: 37.5,
+      label: (i) => ["처음", "전개", "반전", "마무리"][i],
+    },
+    {
+      id: 4, key: "story", file: "스토리보드", title: "스토리보드",
+      sub: "장면마다 화면을 그리고, 아래에 무슨 일이 일어나는지 적어요",
+      blurb: "영상 · 연극 기획용 16:9 여섯 장면. 그림만 잘라 장면 순서대로 PPT로 만들어요.",
+      meta: "6칸 · 16:9 · PPT 만들기",
+      g: grid(2, 3, 78, 43.875, 10, 33.1, 46), ratio: "1.777778", inset: 0.9,
+      after: "s4ppt",
+      deco(g, b) {
+        // 그림 아래 설명 줄 (잘리는 영역 밖)
+        g.save();
+        g.fillStyle = "#8a8e9c"; g.font = `600 2.5px ${FONT}`; g.textAlign = "left";
+        const rows = [["장면", 6.4], ["", 12.2], ["소리 · 대사", 18.6]];
+        g.strokeStyle = SOFT; g.lineWidth = 0.28;
+        for (const [t, dy] of rows) {
+          const y = b.y + b.h + dy;
+          const tx = t ? b.x + g.measureText(t).width + 2 : b.x;
+          if (t) g.fillText(t, b.x, y - 0.5);
+          g.beginPath(); g.moveTo(tx, y); g.lineTo(b.x + b.w, y); g.stroke();
+        }
+        g.restore();
+      },
+      label: (i) => `S#${i + 1}`,
+      labelInside: true,
+    },
+    {
+      id: 5, key: "word", file: "낱말카드", title: "낱말 카드",
+      sub: "위에는 그림을, 아래 줄에는 낱말을 적어 카드를 만들어요",
+      blurb: "그림과 낱말을 한 카드에. 영어 단어 · 한자 · 과학 용어 퀴즈 카드로 바로 써요.",
+      meta: "8칸 · 3:2 · 낱장 · PPT",
+      g: grid(2, 4, 80, 53.3, 8, 3.6, 44), ratio: "0", inset: 1.2,
+      after: "s4",
+      deco(g, b) {
+        g.save();
+        g.strokeStyle = SOFT; g.lineWidth = 0.3; g.setLineDash([1.2, 1]);
+        g.beginPath(); g.moveTo(b.x + 10, b.y + b.h - 10); g.lineTo(b.x + b.w - 10, b.y + b.h - 10); g.stroke();
+        g.restore();
+      },
+    },
+  ];
+  const byId = (id) => TEMPLATES.find((t) => t.id === id) || TEMPLATES[0];
+  const byKey = (k) => TEMPLATES.find((t) => t.key === k) || TEMPLATES[0];
+
+  function cellRect(T, c, r) {
+    const g = T.g;
+    return { x: g.x + c * (g.w + g.gx), y: g.y + r * (g.h + g.gy), w: g.w, h: g.h };
   }
+  // 예전 이름 호환 (이모티콘 학습지 기준)
+  const GRID = TEMPLATES[0].g;
 
   // 학습지 한 장을 캔버스에 그림 (ppm: 1 mm당 픽셀 수)
-  function renderSheet(ppm, { faces = false } = {}) {
+  function renderSheet(ppm, { faces = false, template = "emoji" } = {}) {
+    const T = typeof template === "object" ? template : byKey(template);
     const cv = document.createElement("canvas");
     cv.width = Math.round(PAGE.w * ppm);
     cv.height = Math.round(PAGE.h * ppm);
@@ -26,53 +124,64 @@ const Sheet = (() => {
     g.fillRect(0, 0, PAGE.w, PAGE.h);
 
     // 기준 마커
-    g.fillStyle = "#000";
     const sq = (cx, cy, s, color) => { g.fillStyle = color; g.fillRect(cx - s / 2, cy - s / 2, s, s); };
     for (const k of ["tl", "tr", "bl"]) {
       const { x, y } = MARK[k];
       sq(x, y, 7 * MOD, "#000"); sq(x, y, 5 * MOD, "#fff"); sq(x, y, 3 * MOD, "#000");
     }
     sq(MARK.br.x, MARK.br.y, 5 * MOD, "#000"); sq(MARK.br.x, MARK.br.y, 3 * MOD, "#fff"); sq(MARK.br.x, MARK.br.y, MOD, "#000");
+    // 종류 표시
+    for (let k = 0; k < 4; k++) {
+      const on = k === 0 || (T.id >> (2 - (k - 1))) & 1;
+      const cy = CODE.y0 + k * CODE.step, h = CODE.size / 2;
+      g.fillStyle = on ? "#000" : "#fff";
+      g.fillRect(CODE.x - h, cy - h, CODE.size, CODE.size);
+      if (!on) { g.strokeStyle = "#b7bbc8"; g.lineWidth = 0.25; g.strokeRect(CODE.x - h, cy - h, CODE.size, CODE.size); }
+    }
 
     // 제목 · 이름 칸
     g.textAlign = "center";
     g.textBaseline = "alphabetic";
     g.fillStyle = INK;
     g.font = `800 8px ${FONT}`;
-    g.fillText("이모티콘 만들기", PAGE.w / 2, 21);
+    g.fillText(T.title, PAGE.w / 2, 21);
     g.fillStyle = "#6b6e7c";
     g.font = `500 3.4px ${FONT}`;
-    g.fillText("네모 칸마다 나만의 표정을 하나씩 그려 보세요", PAGE.w / 2, 27.5);
+    g.fillText(T.sub, PAGE.w / 2, 27.5);
     g.fillStyle = INK;
     g.font = `600 3.6px ${FONT}`;
     g.textAlign = "left";
-    const label = [["학년", 14], ["반", 14], ["번", 14], ["이름", 40]];
+    const nameY = T.nameY ?? 37.5;
     let x = 42;
     g.strokeStyle = "#9aa0b4";
     g.lineWidth = 0.3;
-    for (const [t, w] of label) {
-      if (t === "이름") { g.fillText(t, x, 37.5); x += 8; }
-      g.beginPath(); g.moveTo(x, 38.3); g.lineTo(x + w, 38.3); g.stroke();
+    for (const [t, w] of [["학년", 14], ["반", 14], ["번", 14], ["이름", 40]]) {
+      if (t === "이름") { g.fillText(t, x, nameY); x += 8; }
+      g.beginPath(); g.moveTo(x, nameY + 0.8); g.lineTo(x + w, nameY + 0.8); g.stroke();
       x += w + 1;
-      if (t !== "이름") { g.fillText(t, x, 37.5); x += g.measureText(t).width + 5; }
+      if (t !== "이름") { g.fillText(t, x, nameY); x += g.measureText(t).width + 5; }
     }
+    T.header?.(g);
 
     // 그림 칸
-    for (let r = 0; r < GRID.rows; r++)
-      for (let c = 0; c < GRID.cols; c++) {
-        const b = cellRect(c, r);
-        g.strokeStyle = "#8e93a6";
+    let i = 0;
+    for (let r = 0; r < T.g.rows; r++)
+      for (let c = 0; c < T.g.cols; c++, i++) {
+        const b = cellRect(T, c, r);
+        g.strokeStyle = LINE;
         g.lineWidth = 0.45;
         g.beginPath();
-        g.roundRect(b.x, b.y, b.w, b.h, 2.2);
+        g.roundRect(b.x, b.y, b.w, b.h, Math.min(2.2, b.h * 0.05));
         g.stroke();
-        // 칸 번호는 칸 바깥 왼쪽 위 (잘리는 그림에 들어가지 않게)
-        g.fillStyle = "#a3a7b6";
+        T.deco?.(g, b, i);
+        // 칸 번호는 칸 바깥 (잘리는 그림에 들어가지 않게)
+        const lab = T.label ? T.label(i) : String(i + 1);
+        g.fillStyle = "#9da1b1";
         g.font = `700 2.6px ${FONT}`;
-        g.textAlign = "right";
-        g.fillText(String(r * GRID.cols + c + 1), b.x - 1, b.y + 2.6);
-        g.textAlign = "left";
-        if (faces) drawFace(g, b.x + b.w / 2, b.y + b.h / 2, b.w * 0.36, r * GRID.cols + c);
+        if (T.labelInside === true) { g.textAlign = "left"; g.fillText(lab, b.x, b.y - 1.2); }
+        else if (lab.length > 2) { g.textAlign = "left"; g.fillText(lab, b.x + 0.5, b.y - 1.2); }
+        else { g.textAlign = "right"; g.fillText(lab, b.x - 1, b.y + 2.6); }
+        if (faces) drawFace(g, b.x + b.w / 2, b.y + b.h / 2, Math.min(b.w, b.h) * 0.36, i);
       }
 
     // 안내 문구 (아래 두 마커 사이)
@@ -117,7 +226,6 @@ const Sheet = (() => {
 
   // ---------- 견본 내려받기 ----------
   async function ready() { try { await document.fonts?.ready; } catch {} }
-  const NAME = "쎈스초퍼_이모티콘_학습지";
   function saveBlob(blob, name) {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -127,18 +235,24 @@ const Sheet = (() => {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   }
-  async function downloadPng() {
+  const fileName = (T) => `쎈스초퍼_${T.file}_학습지`;
+  async function downloadPng(key = "emoji") {
     await ready();
-    const cv = renderSheet(300 / 25.4);
+    const T = byKey(key);
+    const cv = renderSheet(300 / 25.4, { template: T });
     const blob = await new Promise((r) => cv.toBlob(r, "image/png"));
-    saveBlob(blob, NAME + ".png");
+    saveBlob(blob, fileName(T) + ".png");
   }
-  async function downloadPdf() {
+  async function downloadPdf(key = "emoji") {
     await ready();
-    const cv = renderSheet(300 / 25.4);
-    const jpeg = await Poster.toJpeg(cv);
-    const blob = Poster.buildPdf([{ wmm: PAGE.w, hmm: PAGE.h, pxW: cv.width, pxH: cv.height, jpeg }]);
-    saveBlob(blob, NAME + ".pdf");
+    const list = key === "all" ? TEMPLATES : [byKey(key)];
+    const pages = [];
+    for (const T of list) {
+      const cv = renderSheet(300 / 25.4, { template: T });
+      pages.push({ wmm: PAGE.w, hmm: PAGE.h, pxW: cv.width, pxH: cv.height, jpeg: await Poster.toJpeg(cv) });
+      cv.width = cv.height = 0;
+    }
+    saveBlob(Poster.buildPdf(pages), key === "all" ? "쎈스초퍼_학습지_모음.pdf" : fileName(list[0]) + ".pdf");
   }
 
   // ---------- 예시 사진: 다 그린 학습지를 비스듬히 찍은 것처럼 ----------
@@ -394,23 +508,41 @@ const Sheet = (() => {
     }
   }
 
-  function placeCells(ppm) {
-    const size = Math.round((GRID.cell - GRID.inset * 2) * ppm);
-    vertical = Array.from({ length: GRID.cols }, (_, c) => (cellRect(c, 0).x + GRID.cell / 2) * ppm);
-    horizontal = Array.from({ length: GRID.rows }, (_, r) => (cellRect(0, r).y + GRID.cell / 2) * ppm);
+  function placeCells(T, ppm) {
+    const G = T.g;
+    const w = Math.round((G.w - T.inset * 2) * ppm), h = Math.round((G.h - T.inset * 2) * ppm);
+    vertical = Array.from({ length: G.cols }, (_, c) => (cellRect(T, c, 0).x + G.w / 2) * ppm);
+    horizontal = Array.from({ length: G.rows }, (_, r) => (cellRect(T, 0, r).y + G.h / 2) * ppm);
     freeFrames = [];
     cropMode = "guide";
     $("cropMode").value = "guide";
     guideAutoSize = false;
     $("guideAutoSize").checked = false;
-    $("ratio").value = "1";
-    for (const [n, r, o] of [["cw", "gw", "gwValue"], ["ch", "gh", "ghValue"]]) {
-      if (size > Number($(r).max)) $(r).max = size;
-      $(n).value = $(r).value = size;
-      $(o).textContent = size + " px";
+    $("ratio").value = T.ratio;
+    for (const [n, r, o, v] of [["cw", "gw", "gwValue", w], ["ch", "gh", "ghValue", h]]) {
+      if (v > Number($(r).max)) $(r).max = v;
+      $(n).value = $(r).value = v;
+      $(o).textContent = v + " px";
     }
     syncGuideBoxes();
     rebuildPositions();
+  }
+
+  // 펴 놓은 학습지에서 종류 표시(네모 4개)를 읽음. 표시가 없는 예전 학습지는 이모티콘.
+  function readTemplate(canvas, ppm) {
+    const g = canvas.getContext("2d", { willReadFrequently: true });
+    const mean = (xmm, ymm, smm) => {
+      const s = Math.max(2, Math.round(smm * ppm));
+      const d = g.getImageData(Math.round(xmm * ppm - s / 2), Math.round(ymm * ppm - s / 2), s, s).data;
+      let t = 0;
+      for (let i = 0; i < d.length; i += 4) t += d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+      return t / (d.length / 4);
+    };
+    const paper = Math.max(mean(CODE.x, CODE.y0 - 8, 3), mean(CODE.x, CODE.y0 + 4 * CODE.step + 4, 3));
+    const bits = [0, 1, 2, 3].map((k) => mean(CODE.x, CODE.y0 + k * CODE.step, CODE.size * 0.5) < paper * 0.55);
+    if (!bits[0]) return TEMPLATES[0];
+    const id = (bits[1] << 2) | (bits[2] << 1) | bits[3];
+    return TEMPLATES.find((t) => t.id === id) || null;
   }
 
   let lastResult = null;
@@ -423,12 +555,13 @@ const Sheet = (() => {
       correctionSources.set(correctionSourceId, canvas);
       rotationOriginal = canvas;
       setRotation(0, false, false);
-      placeCells(ppm);
+      const T = readTemplate(canvas, ppm);
+      if (T) placeCells(T, ppm);
       selected = 0;
       render();
       previews();
-      lastResult = { exact: found.exact, count: boxes.length };
-      toast("학습지 표시를 찾아 반듯하게 펴고 칸마다 영역을 잡았어요.");
+      lastResult = { exact: found.exact, count: boxes.length, T };
+      toast(T ? `‘${T.title}’ 학습지를 반듯하게 펴고 칸마다 영역을 잡았어요.` : "학습지 표시를 찾아 반듯하게 폈어요.");
       Coach.show("sheet");
       return true;
     } catch (e) {
@@ -479,30 +612,72 @@ const Sheet = (() => {
   };
 
   // 안내 막대에 '학습지를 찾았어요' 질문 추가
-  Coach.register("sheet", () => ({
-    step: 1,
-    q: "쎈스 초퍼 학습지를 찾았어요!",
-    tip: `네 모서리 표시로 사진을 반듯하게 펴고, 그림 칸 ${lastResult?.count ?? 12}개에 영역을 잡아 두었어요. 미리보기를 확인하고 바로 저장하세요.${lastResult && !lastResult.exact ? " (오른쪽 아래 표시가 흐려서 어림으로 맞췄어요.)" : ""}`,
-    extra: () => [Coach.h("p", "coach-readout", `자동 원근 보정 · 영역 ${boxes.length}개`)],
-    actions: [
-      ["바로 저장하러 가기", () => Coach.goStep(4), true],
-      ["영역 크기 조정하기", () => Coach.goStep(3)],
-      ["보정 없이 원래 사진 쓰기", () => { revert(); Coach.show("s0"); }],
-    ],
-  }));
+  const NEXT_LABEL = { s4: "바로 저장하러 가기", s4gif: "바로 GIF 만들러 가기", s4ppt: "바로 발표 자료 만들러 가기" };
+  Coach.register("sheet", () => {
+    const T = lastResult?.T;
+    const goNext = () => {
+      Coach.goStep(4);
+      if (T && T.after !== "s4") setTimeout(() => Coach.show(T.after), 0);
+    };
+    return {
+      step: 1,
+      q: T ? `‘${T.title}’ 학습지를 찾았어요!` : "쎈스 초퍼 학습지를 찾았어요!",
+      tip: T
+        ? `네 모서리 표시로 사진을 반듯하게 펴고, 칸 ${boxes.length}개에 영역을 잡아 두었어요. 미리보기를 확인하고 바로 넘어가세요.${lastResult && !lastResult.exact ? " (오른쪽 아래 표시가 흐려서 어림으로 맞췄어요.)" : ""}`
+        : "사진은 반듯하게 폈어요. 어떤 학습지인지 표시가 가려져 있어서 영역은 직접 정해 주세요.",
+      extra: () => [Coach.h("p", "coach-readout", T ? `자동 원근 보정 · ${T.meta.split(" · ")[0]} · 영역 ${boxes.length}개` : "자동 원근 보정")],
+      actions: T
+        ? [
+            [NEXT_LABEL[T.after] || NEXT_LABEL.s4, goNext, true],
+            ["영역 크기 조정하기", () => Coach.goStep(3)],
+            ["보정 없이 원래 사진 쓰기", () => { revert(); Coach.show("s0"); }],
+          ]
+        : [
+            ["영역 정하러 가기", () => Coach.show("s0"), true],
+            ["보정 없이 원래 사진 쓰기", () => { revert(); Coach.show("s0"); }],
+          ],
+    };
+  });
 
-  // ---------- 화면에 견본 내려받기 버튼 ----------
-  document.querySelectorAll("[data-sheet-pdf]").forEach((b) => (b.onclick = downloadPdf));
-  document.querySelectorAll("[data-sheet-png]").forEach((b) => (b.onclick = downloadPng));
-  document.querySelectorAll("[data-sheet-try]").forEach((b) => (b.onclick = async () => load(await samplePhoto())));
-  // 첫 화면 견본 미리보기
-  const thumb = document.querySelector("[data-sheet-thumb]");
-  if (thumb)
+  // ---------- 첫 화면 학습지 견본 모음 ----------
+  const gallery = document.querySelector("[data-sheet-gallery]");
+  if (gallery) {
+    gallery.replaceChildren(
+      ...TEMPLATES.map((T) => {
+        const li = document.createElement("li");
+        li.className = "sheet-card";
+        li.innerHTML = `
+          <div class="sheet-thumb" aria-hidden="true"></div>
+          <div class="sheet-card-body">
+            <h3>${T.title}</h3>
+            <p class="sheet-meta">${T.meta}</p>
+            <p>${T.blurb}</p>
+            <div class="sheet-card-actions">
+              <button type="button" class="primary" data-sheet-pdf="${T.key}">PDF</button>
+              <button type="button" data-sheet-png="${T.key}">PNG</button>
+            </div>
+          </div>`;
+        return li;
+      }),
+    );
     ready().then(() => {
-      const cv = renderSheet(3);
-      cv.setAttribute("aria-hidden", "true");
-      thumb.replaceChildren(cv);
+      gallery.querySelectorAll(".sheet-thumb").forEach((el, i) => {
+        const cv = renderSheet(2.4, { template: TEMPLATES[i] });
+        el.replaceChildren(cv);
+      });
     });
+  }
+  const busyBtn = async (b, fn) => {
+    if (b.disabled) return;
+    b.disabled = true;
+    try { await fn(); } finally { b.disabled = false; }
+  };
+  document.addEventListener("click", (e) => {
+    const pdf = e.target.closest("[data-sheet-pdf]"), png = e.target.closest("[data-sheet-png]"), tr = e.target.closest("[data-sheet-try]");
+    if (pdf) busyBtn(pdf, () => downloadPdf(pdf.dataset.sheetPdf || "emoji"));
+    else if (png) busyBtn(png, () => downloadPng(png.dataset.sheetPng || "emoji"));
+    else if (tr) busyBtn(tr, async () => load(await samplePhoto()));
+  });
 
-  return { renderSheet, detect, samplePhoto, downloadPdf, downloadPng, MARK, GRID, PAGE };
+  return { renderSheet, detect, samplePhoto, downloadPdf, downloadPng, TEMPLATES, MARK, GRID, PAGE };
 })();

@@ -151,7 +151,8 @@
   mobile.addEventListener("change", () => selectStep(current));
   let hadImage = false;
   function updateImageEntry() {
-    const hasImage = Boolean(img);
+    // 처음 화면을 보는 동안(at-home)에는 작업 화면을 숨겨요. 작업 내용은 그대로 남아요.
+    const hasImage = Boolean(img) && !document.body.classList.contains("at-home");
     document.body.classList.toggle("has-image", hasImage);
     $("mobileNext").disabled = current === 4 || !hasImage;
     if (hasImage !== hadImage) {

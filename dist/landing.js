@@ -135,4 +135,23 @@
     e.preventDefault(); depth = 0; landing.classList.remove("drag");
     load(e.dataTransfer.files[0]);
   });
+
+  // 5) 처음 화면으로 가기 · 작업으로 돌아가기 (작업 중인 이미지와 영역은 그대로 둬요)
+  const goHome = () => {
+    document.body.classList.add("at-home");
+    render();
+    window.scrollTo({ top: 0 });
+  };
+  const backToWork = () => {
+    document.body.classList.remove("at-home");
+    render();
+    requestAnimationFrame(() => fit());
+  };
+  $("goHome").onclick = goHome;
+  $("backToWork").onclick = backToWork;
+  const loadBeforeHome = load;
+  load = function (...args) {
+    document.body.classList.remove("at-home");
+    return loadBeforeHome.apply(this, args);
+  };
 })();

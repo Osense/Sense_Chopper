@@ -1101,24 +1101,50 @@ body.poster-mode .previewhead, body.poster-mode #previews, body.poster-mode .exp
 .poster-progress .pp-actions { display: flex; justify-content: flex-end; }
 .poster-progress .pp-cancel { min-width: 88px; }
 
-/* 12. 인식 표시가 있는 학습지 견본 */
-.sheet-promo { position: relative; z-index: 1; max-width: 1280px; margin: 8px auto 0; padding: 24px 32px 40px; display: grid; grid-template-columns: 220px 1fr; gap: 28px; align-items: center; }
-.sheet-thumb { aspect-ratio: 210 / 297; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 18px 40px oklch(0.25 0.04 280 / 0.14); overflow: hidden; transform: rotate(-2deg); }
+/* 12. 학습지 견본 모음 (첫 화면) */
+.sheets { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 36px 32px 12px; scroll-margin-top: 72px; }
+.sheets-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 14px 24px; margin-bottom: 18px; }
+.sheets-head h2 { margin: 6px 0 8px; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+.sheets-head p:not(.eyebrow) { max-width: 660px; margin: 0; color: var(--muted); line-height: 1.6; }
+.sheets-head p b { color: var(--text); }
+.sheets-head-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.sheet-gallery { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+.sheet-card { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 16px; background: var(--panel); box-shadow: var(--shadow-card); overflow: hidden; }
+.sheet-card .sheet-thumb { aspect-ratio: 210 / 297; margin: 14px 14px 0; background: #fff; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; box-shadow: 0 8px 22px oklch(0.25 0.04 280 / 0.10); transition: transform .2s; }
+.sheet-card:hover .sheet-thumb { transform: translateY(-3px) rotate(-1deg); }
 .sheet-thumb canvas { display: block; width: 100%; height: 100%; }
-.sheet-copy h2 { font-size: 24px; font-weight: 800; margin: 6px 0 8px; }
-.sheet-copy > p { max-width: 640px; color: var(--muted); line-height: 1.6; margin: 0; }
-.sheet-copy > p b { color: var(--text); }
-.sheet-steps { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 16px; padding: 0; list-style: none; counter-reset: s; }
-.sheet-steps li { counter-increment: s; display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border: 1px solid var(--border); border-radius: 99px; font-size: 13px; font-weight: 600; }
-.sheet-steps li::before { content: counter(s); display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 800; }
-.sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.sheet-card-body { display: flex; flex-direction: column; flex: 1; padding: 12px 14px 14px; }
+.sheet-card h3 { margin: 0; font-size: 16px; font-weight: 800; }
+.sheet-meta { margin: 3px 0 6px; font-size: 11.5px; font-weight: 700; color: var(--accent); }
+.sheet-card p:not(.sheet-meta) { flex: 1; margin: 0 0 12px; font-size: 12.5px; line-height: 1.55; color: var(--muted); }
+.sheet-card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .sheet-link { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
-.linkish { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.linkish { padding: 0; min-height: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .linkish:hover:not(:disabled) { background: none; }
+a.button { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 7px 12px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--muted); text-decoration: none; }
+a.button:hover { background: var(--active); color: var(--text); }
+@media (max-width: 1100px) { .sheet-gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 720px) {
-  .sheet-promo { grid-template-columns: 96px 1fr; gap: 14px; padding: 16px 10px 28px; align-items: start; }
-  .sheet-copy h2 { font-size: 19px; }
-  .sheet-copy > p { font-size: 13px; }
-  .sheet-steps li { font-size: 12px; }
-  .sheet-actions button { flex: 1 1 auto; }
+  .sheets { padding: 22px 10px 6px; }
+  .sheets-head h2 { font-size: 21px; }
+  .sheets-head p:not(.eyebrow) { font-size: 13px; }
+  .sheets-head-actions { width: 100%; }
+  .sheets-head-actions button { flex: 1 1 auto; }
+  .sheet-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .sheet-card .sheet-thumb { margin: 10px 10px 0; }
+  .sheet-card-body { padding: 10px; }
+  .sheet-card h3 { font-size: 14px; }
+  .sheet-card p:not(.sheet-meta) { font-size: 12px; }
 }
+
+/* 13. 처음 화면으로 · 작업으로 돌아가기 */
+body:not(.has-image) #goHome { display: none; }
+.resume-bar { display: none; }
+body.at-home .resume-bar { position: sticky; top: 8px; z-index: 30; display: flex; align-items: center; justify-content: center; gap: 12px; max-width: 560px; margin: 12px auto 0; padding: 8px 8px 8px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow-card); font-size: 13.5px; font-weight: 600; }
+@media (max-width: 720px) { body.at-home .resume-bar { margin: 8px 10px 0; font-size: 12.5px; } #goHome span { display: none; } }
+
+/* 14. 선 보정 돋보기 */
+.loupe { position: fixed; z-index: 60; width: 156px; height: 156px; border-radius: 50%; overflow: hidden; pointer-events: none; border: 3px solid #fff; box-shadow: 0 0 0 1px oklch(0.3 0.03 280 / .35), 0 14px 34px oklch(0.2 0.04 280 / .35); background: #fff; display: none; }
+.loupe.on { display: block; }
+.loupe canvas { display: block; width: 100%; height: 100%; }
+.loupe .loupe-zoom { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); padding: 1px 7px; border-radius: 99px; background: oklch(0.2 0.03 280 / .7); color: #fff; font: 700 10px/1.6 var(--font-mono); }
